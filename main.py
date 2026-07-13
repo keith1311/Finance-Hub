@@ -12,36 +12,39 @@ HTML = """
 	<title>Finance Hub - Mock UI</title>
 	<style>
 		:root{--bg:#0f1317;--card:#1a1d26;--inner:#14161f;--accent:#3b6285;--muted:#8a92a6;--text:#ffffff}
-		html,body{height:100%;margin:0;background:var(--bg);font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;color:var(--text)}
-		.container{max-width:1200px;margin:18px auto;padding:18px}
-		.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+		*{box-sizing:border-box}
+		html,body{height:100%;margin:0;padding:0;background:var(--bg);font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;color:var(--text)}
+		.container{display:flex;flex-direction:column;height:100vh;padding:18px;gap:12px}
+		.header{display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
 		.title{font-size:22px;font-weight:700}
 		.total{text-align:right}
 		.total .label{color:var(--muted);font-size:13px}
 		.total .value{font-size:20px;font-weight:700}
 
-		.workspace{display:grid;grid-template-columns:3fr 1fr;gap:18px;align-items:stretch}
+		.workspace{display:grid;grid-template-columns:3fr 1fr;gap:18px;align-items:stretch;flex:1}
 
 		/* Left panel */
-		.left .section-title{font-weight:700;margin:6px 0 12px}
-		.wallet-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+		.left{display:flex;flex-direction:column;gap:12px}
+		.left .section-title{font-weight:700;margin:0}
+		.wallet-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;flex-shrink:0}
 		.wallet{background:var(--inner);padding:14px;border-radius:12px}
 		.wallet .name{color:var(--muted);font-size:14px}
 		.wallet .balance{font-size:18px;font-weight:700;margin-top:8px}
 		.view-btn{display:inline-block;margin-top:10px;background:var(--accent);color:#fff;padding:7px 10px;border-radius:8px;text-decoration:none}
 
-		.table-card{background:var(--inner);border-radius:12px;padding:12px}
-		.table-headers{display:flex;gap:8px;color:var(--muted);font-weight:600;padding:6px 4px}
+		.table-card{background:var(--inner);border-radius:12px;padding:12px;display:flex;flex-direction:column;flex:1;min-height:0}
+		.table-headers{display:flex;gap:8px;color:var(--muted);font-weight:600;padding:6px 4px;flex-shrink:0}
 		.table-headers div{flex:1}
-		.table-scroll{max-height:260px;overflow:auto;margin-top:8px}
-		.table-row{display:flex;gap:8px;padding:10px 4px;border-bottom:1px solid #121418;color:#cbd3da}
+		.table-scroll{flex:1;overflow-y:auto;margin-top:8px;min-height:0}
+		.table-row{display:flex;gap:8px;padding:10px 4px;border-bottom:1px solid #121418;color:#cbd3da;flex-shrink:0}
 		.table-row div{flex:1}
 		.placeholder{color:var(--muted);font-style:italic;padding:18px;text-align:center}
 
 		/* Right panel */
-		.right .card{background:var(--card);border-radius:14px;padding:18px;color:var(--text);display:flex;flex-direction:column;height:100%}
+		.right{display:flex;flex-direction:column}
+		.right .card{background:var(--card);border-radius:14px;padding:18px;color:var(--text);display:flex;flex-direction:column;flex:1}
 		.chart-area{flex:1;min-height:220px;border-radius:8px;background:linear-gradient(180deg,#0c0f12,#0b0e11);display:flex;align-items:center;justify-content:center;color:var(--muted)}
-		.monthly-total{margin-top:12px;text-align:center;font-weight:700}
+		.monthly-total{margin-top:12px;text-align:center;font-weight:700;flex-shrink:0}
 
 		@media (max-width:900px){.workspace{grid-template-columns:1fr}}
 	</style>
