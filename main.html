@@ -41,10 +41,10 @@
 		.view-btn{display:inline-block;margin-top:10px;background:var(--accent);color:#fff;padding:7px 10px;border-radius:8px;text-decoration:none}
 
 		.table-card{background:var(--inner);border-radius:12px;padding:12px;display:flex;flex-direction:column;flex:1;min-height:0}
-		.table-headers{display:flex;gap:8px;color:var(--muted);font-weight:600;padding:6px 4px;flex-shrink:0}
+		.table-headers{display:flex;gap:120px;color:var(--muted);font-weight:600;padding:6px 20px;flex-shrink:0}
 		.table-headers div{flex:1}
 		.table-scroll{flex:1;overflow-y:auto;margin-top:8px;min-height:0}
-		.table-row{display:flex;gap:8px;padding:10px 4px;border-bottom:1px solid #121418;color:#cbd3da;flex-shrink:0}
+		.table-row{display:flex;gap:120px;padding:10px 4px;border-bottom:1px solid #121418;color:#cbd3da;flex-shrink:0}
 		.table-row div{flex:1}
 		.placeholder{color:var(--muted);font-style:italic;padding:18px;text-align:center}
 
@@ -77,91 +77,7 @@
 					</div>
 				</div>
 
-				<div class="wallet-grid">
-					<div class="wallet">
-						<div class="wallet-header">
-							<div class="wallet-info"><div class="name">General</div><div class="balance">$0.00</div></div>
-							<button class="menu-btn">⋯</button>
-							<div class="dropdown-menu">
-								<a>Rename</a>
-								<a>Delete</a>
-								<a>Lock</a>
-								<a>Censor</a>
-								<a>Hide</a>
-							</div>
-						</div>
-						<a class="view-btn">VIEW DETAILS</a>
-					</div>
-					<div class="wallet">
-						<div class="wallet-header">
-							<div class="wallet-info"><div class="name">Savings</div><div class="balance">$0.00</div></div>
-							<button class="menu-btn">⋯</button>
-							<div class="dropdown-menu">
-								<a>Rename</a>
-								<a>Delete</a>
-								<a>Lock</a>
-								<a>Censor</a>
-								<a>Hide</a>
-							</div>
-						</div>
-						<a class="view-btn">VIEW DETAILS</a>
-					</div>
-					<div class="wallet">
-						<div class="wallet-header">
-							<div class="wallet-info"><div class="name">Credit</div><div class="balance">$0.00</div></div>
-							<button class="menu-btn">⋯</button>
-							<div class="dropdown-menu">
-								<a>Rename</a>
-								<a>Delete</a>
-								<a>Lock</a>
-								<a>Censor</a>
-								<a>Hide</a>
-							</div>
-						</div>
-						<a class="view-btn">VIEW DETAILS</a>
-					</div>
-					<div class="wallet">
-						<div class="wallet-header">
-							<div class="wallet-info"><div class="name">Wallet 4</div><div class="balance">$0.00</div></div>
-							<button class="menu-btn">⋯</button>
-							<div class="dropdown-menu">
-								<a>Rename</a>
-								<a>Delete</a>
-								<a>Lock</a>
-								<a>Censor</a>
-								<a>Hide</a>
-							</div>
-						</div>
-						<a class="view-btn">VIEW DETAILS</a>
-					</div>
-					<div class="wallet">
-						<div class="wallet-header">
-							<div class="wallet-info"><div class="name">Wallet 5</div><div class="balance">$0.00</div></div>
-							<button class="menu-btn">⋯</button>
-							<div class="dropdown-menu">
-								<a>Rename</a>
-								<a>Delete</a>
-								<a>Lock</a>
-								<a>Censor</a>
-								<a>Hide</a>
-							</div>
-						</div>
-						<a class="view-btn">VIEW DETAILS</a>
-					</div>
-					<div class="wallet">
-						<div class="wallet-header">
-							<div class="wallet-info"><div class="name">Wallet 6</div><div class="balance">$0.00</div></div>
-							<button class="menu-btn">⋯</button>
-							<div class="dropdown-menu">
-								<a>Rename</a>
-								<a>Delete</a>
-								<a>Lock</a>
-								<a>Censor</a>
-								<a>Hide</a>
-							</div>
-						</div>
-						<a class="view-btn">VIEW DETAILS</a>
-					</div>
+				<div class="wallet-grid" id="wallet-grid">
 				</div>
 
 				<div class="section-title">TRANSACTION DETAILS TABLE</div>
@@ -184,6 +100,33 @@
 		</div>
 	</div>
 	<script>
+		const walletData = [
+    		{ name: "Wallet 1" }, { name: "Wallet 2" }, { name: "Wallet 3" },
+    		{ name: "Wallet 4" }, { name: "Wallet 5" }, { name: "Wallet 6" }
+			];
+
+		const grid = document.getElementById('wallet-grid');
+
+		walletData.forEach(wallet => {
+			const walletDiv = document.createElement('div');
+			walletDiv.className = 'wallet';
+			walletDiv.innerHTML = `
+				<div class="wallet-header">
+							<div class="wallet-info"><div class="name">${wallet.name}</div><div class="balance">RM0.00</div></div>
+							<button class="menu-btn">⋯</button>
+							<div class="dropdown-menu">
+								<a>Rename</a>
+								<a>Delete</a>
+								<a>Lock</a>
+								<a>Censor</a>
+								<a>Hide</a>
+							</div>
+						</div>
+						<a class="view-btn">VIEW DETAILS</a>
+			`;
+			grid.appendChild(walletDiv);
+		});
+
 		document.querySelectorAll('.menu-btn, .manage-btn').forEach(btn => {
 			btn.addEventListener('click', function(e) {
 				e.stopPropagation();
