@@ -1,17 +1,8 @@
 async function fetchAndRenderWallets() {
   try {
     // 1. Fetch data from your Python API
-    // const response = await fetch("http://127.0.0.1:8000/api/wallets");
-    // const walletData = await response.json();
-
-    const walletData = [
-      { name: "Wallet 1" },
-      { name: "Wallet 2" },
-      { name: "Wallet 3" },
-      { name: "Wallet 4" },
-      { name: "Wallet 5" },
-      { name: "Wallet 6" },
-    ];
+    const response = await fetch("http://127.0.0.1:8000/api/renderwallets");
+    const walletData = await response.json();
 
     const grid = document.getElementById("wallet-grid");
     grid.innerHTML = ""; // Clear any placeholders
@@ -24,6 +15,8 @@ async function fetchAndRenderWallets() {
 
       // Set the data using textContent
       clone.querySelector(".name").textContent = wallet.name;
+      clone.querySelector(".balance").textContent =
+        `RM ${wallet.balance.toFixed(2)}`;
 
       // Append the card (NOT the grid) to the grid container
       document.getElementById("wallet-grid").appendChild(clone);
@@ -34,28 +27,38 @@ async function fetchAndRenderWallets() {
 }
 
 // 3. Trigger the function when the page loads
-window.onload = fetchAndRenderWallets;
+fetchAndRenderWallets();
 
-document.querySelectorAll(".menu-btn, .manage-btn").forEach((btn) => {
-  btn.addEventListener("click", function (e) {
+document.addEventListener("click", function (e) {
+  // 1. Identify if a button or a menu link was clicked
+  const targetBtn = e.target.closest(".menu-btn, .manage-btn");
+  const menuLink = e.target.closest(".dropdown-menu a");
+
+  // 2. Handle Button Clicks (Toggle Menus)
+  if (targetBtn) {
     e.stopPropagation();
-    const menu = this.nextElementSibling;
+    const menu = targetBtn.nextElementSibling;
+
+    // Close all other open menus
     document.querySelectorAll(".dropdown-menu.active").forEach((m) => {
       if (m !== menu) m.classList.remove("active");
     });
-    if (menu) {
+
+    // Toggle the targeted menu
+    if (menu && menu.classList.contains("dropdown-menu")) {
       menu.classList.toggle("active");
     }
-  });
-});
-document.addEventListener("click", function () {
-  document.querySelectorAll(".dropdown-menu.active").forEach((m) => {
-    m.classList.remove("active");
-  });
-});
-document.querySelectorAll(".dropdown-menu a").forEach((item) => {
-  item.addEventListener("click", function () {
-    alert("Action: " + this.textContent);
-    this.parentElement.classList.remove("active");
-  });
+  }
+  // 3. Handle Menu Link Clicks (Actions)
+  else if (menuLink) {
+    alert("Action: " + menuLink.textContent);
+    // Close the menu after clicking an action
+    menuLink.parentElement.classList.remove("active");
+  }
+  // 4. Close menus if clicking anywhere else on the page
+  else {
+    document.querySelectorAll(".dropdown-menu.active").forEach((m) => {
+      m.classList.remove("active");
+    });
+  }
 });
