@@ -26,7 +26,21 @@ async function fetchAndRenderWallets() {
   }
 }
 
+async function fetchAndRenderTotalBalance() {
+  try {
+    // 1. Fetch data from your Python API
+    const response = await fetch("http://127.0.0.1:8000/api/total-balance");
+    const totalBalance = await response.json();
+
+    document.getElementById("total-balance").textContent =
+      `RM${totalBalance.toFixed(2)}`;
+  } catch (error) {
+    console.error("Failed to load total balance:", error);
+  }
+}
+
 // 3. Trigger the function when the page loads
+fetchAndRenderTotalBalance();
 fetchAndRenderWallets();
 
 document.addEventListener("click", function (e) {

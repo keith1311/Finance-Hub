@@ -24,3 +24,10 @@ def render_wallets():
             {"name": wallet["Wallet Name"], "balance": wallet["Balance"]}
         )
     return rendered_wallets
+
+
+@app.get("/api/total-balance")
+def get_total_balance():
+    records, wallets = load_data()
+    total_balance = sum(wallet["Balance"] for wallet in wallets)
+    return total_balance
