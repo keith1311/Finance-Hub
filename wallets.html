@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Wallet</title>
+    <link rel="stylesheet" href="wallets.css" />
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="title">MONTHLY EXPENSE ANALYSIS</div>
+        <div class="total">
+          <div class="label">Total Balance</div>
+          <div class="value" id="total-balance">RM0.00</div>
+        </div>
+      </div>
+
+      <div class="workspace">
+        <div class="left">
+          <div class="section-title">MONTHLY EXPENSE ANALYSIS</div>
+          <div class="analysis-card">
+            <div class="analysis-header">
+              Expense trend & category breakdown
+            </div>
+            <div class="analysis-chart">
+              <canvas id="expense-chart"></canvas>
+            </div>
+          </div>
+
+          <div class="section-title">TRANSACTION DETAILS TABLE</div>
+          <div class="table-card">
+            <div class="table-headers">
+              <div>Date</div>
+              <div>Tags</div>
+              <div>Amount</div>
+              <div>Wallet</div>
+            </div>
+            <div class="divider"></div>
+            <div class="table-scroll">
+              <div class="placeholder">
+                [ Your log loop data will populate new rows here dynamically ]
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="right">
+          <div class="card">
+            <div style="font-weight: 700; margin-bottom: 8px">
+              MONTHLY EXPENSES
+            </div>
+            <div class="chart-area">
+              ⭕<br /><br />[ Donut Chart Canvas Area ]
+            </div>
+            <div class="monthly-total">
+              Monthly Total: <span style="font-size: 18px">RM0.00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script src="main.js" defer></script>
+  </body>
+</html>
