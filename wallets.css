@@ -76,6 +76,13 @@ body {
   min-height: 0;
 }
 
+.upper-left {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: flex-start;
+}
+
 .left .section-title {
   font-weight: 700;
   margin: 0;
@@ -88,7 +95,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  min-height: 320px;
+  min-height: 300px;
   height: 330px;
   width: 80%;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
@@ -108,6 +115,7 @@ body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  flex: 4;
 }
 
 .analysis-chart canvas {
@@ -116,6 +124,37 @@ body {
   width: 100%;
   height: 100%;
   display: block;
+}
+
+.buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex: 1;
+  justify-content: space-between; /* Pushes first item to start, last to end */
+  align-items: flex-start;
+  height: 100%;
+}
+
+.btn {
+  display: flex;
+  background: var(--accent);
+  color: var(--text);
+  border: none;
+  border-radius: 12px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 400;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  width: 100%;
+  height: 20%;
+}
+
+.btn:hover {
+  filter: brightness(1.15);
 }
 
 .table-card {

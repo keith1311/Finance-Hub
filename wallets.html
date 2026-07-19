@@ -20,12 +20,23 @@
       <div class="workspace">
         <div class="left">
           <div class="section-title">MONTHLY EXPENSE ANALYSIS</div>
-          <div class="analysis-card">
-            <div class="analysis-header">
-              Expense trend & category breakdown
+          <div class="upper-left">
+            <div class="analysis-card">
+              <div class="analysis-header">
+                Expense trend & category breakdown
+              </div>
+              <div class="analysis-chart">
+                <canvas id="expense-chart"></canvas>
+              </div>
             </div>
-            <div class="analysis-chart">
-              <canvas id="expense-chart"></canvas>
+            <div class="buttons">
+              <button class="btn" id="add-income">Add Income</button>
+              <button class="btn" id="create-transaction">
+                Create Transaction
+              </button>
+              <button class="btn" id="open-settings">Settings</button>
+              <button class="btn" id="filter-transactions">Filter</button>
+              <button class="btn" id="close-wallet">Close Wallet</button>
             </div>
           </div>
 
@@ -61,6 +72,6 @@
         </div>
       </div>
     </div>
-    <script src="main.js" defer></script>
+    <script src="wallets.js" defer></script>
   </body>
 </html>

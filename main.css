@@ -194,7 +194,7 @@ body {
 }
 
 .manage-btn:hover {
-  filter: brightness(1.08);
+  filter: brightness(1.15);
 }
 
 .view-btn {
@@ -205,6 +205,10 @@ body {
   padding: 7px 10px;
   border-radius: 8px;
   text-decoration: none;
+}
+
+.view-btn:hover {
+  filter: brightness(1.15);
 }
 
 .table-card {
