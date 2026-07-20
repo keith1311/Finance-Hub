@@ -1,8 +1,11 @@
-async function fetchAndRenderWallets() {
+async function fetchAndRenderMainPage() {
   try {
     // 1. Fetch data from your Python API
-    const response = await fetch("http://127.0.0.1:8000/api/renderwallets");
-    const walletData = await response.json();
+    const response = await fetch("http://127.0.0.1:8000/api/render_main_page");
+    const [walletData, totalBalance] = await response.json();
+
+    document.getElementById("total-balance").textContent =
+      `RM${totalBalance.toFixed(2)}`;
 
     const grid = document.getElementById("wallet-grid");
     grid.innerHTML = ""; // Clear any placeholders
@@ -13,6 +16,8 @@ async function fetchAndRenderWallets() {
     walletData.forEach((wallet) => {
       const clone = template.content.cloneNode(true);
 
+      const link = clone.querySelector(".view-btn");
+      link.href = `wallets.html?id=${wallet.id}`; // Set the href to the wallet's ID
       // Set the data using textContent
       clone.querySelector(".name").textContent = wallet.name;
       clone.querySelector(".balance").textContent =
@@ -26,22 +31,8 @@ async function fetchAndRenderWallets() {
   }
 }
 
-async function fetchAndRenderTotalBalance() {
-  try {
-    // 1. Fetch data from your Python API
-    const response = await fetch("http://127.0.0.1:8000/api/total-balance");
-    const totalBalance = await response.json();
-
-    document.getElementById("total-balance").textContent =
-      `RM${totalBalance.toFixed(2)}`;
-  } catch (error) {
-    console.error("Failed to load total balance:", error);
-  }
-}
-
 // 3. Trigger the function when the page loads
-fetchAndRenderTotalBalance();
-fetchAndRenderWallets();
+fetchAndRenderMainPage();
 
 document.addEventListener("click", function (e) {
   // 1. Identify if a button or a menu link was clicked
