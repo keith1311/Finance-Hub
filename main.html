@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Finance Hub</title>
     <link rel="stylesheet" href="main.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
 
   <body>
@@ -64,12 +65,13 @@
             <div class="table-headers">
               <div>Date</div>
               <div>Tags</div>
+              <div>Category</div>
               <div>Amount</div>
               <div>Wallet</div>
             </div>
             <div style="height: 1px; background: #222633; margin: 6px 0"></div>
             <div class="table-scroll">
-              <div class="placeholder">
+              <div class="table-details" id="table-details">
                 [ Your log loop data will populate new rows here dynamically ]
               </div>
             </div>
@@ -81,8 +83,8 @@
             <div style="font-weight: 700; margin-bottom: 8px">
               MONTHLY EXPENSES
             </div>
-            <div class="chart-area">
-              ⭕<br /><br />[ Donut Chart Canvas Area ]
+            <div class="chart-area" id="chart-area">
+              <canvas id="expenseChart"></canvas>
             </div>
             <div class="monthly-total">
               Monthly Total: <span style="font-size: 18px">RM0.00</span>

@@ -2,11 +2,14 @@ async function fetchAndRenderMainPage() {
   try {
     // 1. Fetch data from your Python API
     const response = await fetch("http://127.0.0.1:8000/api/render_main_page");
-    const [walletData, totalBalance] = await response.json();
+    const [walletData, totalBalance, transactionData, canvasData] =
+      await response.json();
 
+    // Update the total balance display
     document.getElementById("total-balance").textContent =
       `RM${totalBalance.toFixed(2)}`;
 
+    // Draw Wallet Cards
     const grid = document.getElementById("wallet-grid");
     grid.innerHTML = ""; // Clear any placeholders
 
@@ -25,6 +28,69 @@ async function fetchAndRenderMainPage() {
 
       // Append the card (NOT the grid) to the grid container
       document.getElementById("wallet-grid").appendChild(clone);
+    });
+
+    // Render Transaction Table
+    const tableDetailsContainer = document.getElementById("table-details");
+
+    // Clear the placeholder text
+    tableDetailsContainer.innerHTML = "";
+
+    if (transactionData.length === 0) {
+      tableDetailsContainer.innerHTML =
+        '<div style="padding: 12px; text-align: center; color: #888;">No transactions found.</div>';
+      return;
+    }
+
+    // Loop through backend data and create rows
+    transactionData.forEach((tx) => {
+      const rowDiv = document.createElement("div");
+      // Add a class name for your row styling (e.g., flex layout matching your headers)
+      rowDiv.className = "table-row-item";
+
+      rowDiv.innerHTML = `
+                <div>${tx.date}</div>
+                <div>${tx.tags || "-"}</div>
+                <div>${tx.category}</div>
+                <div>RM ${tx.amount.toFixed(2)}</div>
+                <div>${tx.wallet_name || tx.wallet_id}</div>
+            `;
+
+      tableDetailsContainer.appendChild(rowDiv);
+    });
+
+    // Render the canvas chart
+
+    const ctx = document.getElementById("expenseChart");
+
+    const myChart = new Chart(ctx, {
+      type: "pie",
+      data: {
+        labels: canvasData.labels,
+        datasets: [
+          {
+            data: canvasData.data,
+            backgroundColor: [
+              "#3b82f6",
+              "#10b981",
+              "#f59e0b",
+              "#ef4444",
+              "#8b5cf6",
+              "#ec4899",
+            ],
+            borderWidth: 0,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: { color: "#cbd3da", boxWidth: 12 },
+          },
+        },
+      },
     });
   } catch (error) {
     console.error("Failed to load wallets:", error);

@@ -1,4 +1,14 @@
-from sqlalchemy import UUID, Boolean, Column, DateTime, String, Float
+from sqlalchemy import (
+    UUID,
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Float,
+)
+from sqlalchemy.orm import relationship
 from database import Base, engine
 import uuid
 
@@ -14,6 +24,23 @@ class Wallet(Base):
     censor = Column(Boolean, default=False)
     hide = Column(Boolean, default=False)
     pin = Column(Boolean, default=False)
+
+    transactions = relationship(
+        "Transactions", back_populates="wallet", cascade="all, delete-orphan"
+    )
+
+
+class Transactions(Base):
+    __tablename__ = "transactions"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    date = Column(DateTime)
+    tags = Column(String)
+    category = Column(String)
+    amount = Column(Float)
+    wallet_id = Column(UUID(as_uuid=True), ForeignKey("wallets.id"))
+
+    wallet = relationship("Wallet", back_populates="transactions")
 
 
 # 1. This tells SQLAlchemy to actually create the "wallets" table in PostgreSQL if it doesn't exist yet

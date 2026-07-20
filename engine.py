@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import SessionLocal
-from tables import Wallet
+from tables import Transactions, Wallet
 from datetime import datetime
+from sqlalchemy import func
 
 
 app = FastAPI()
@@ -19,6 +20,7 @@ app.add_middleware(
 @app.get("/api/render_main_page")
 def render_main_page():
     db = SessionLocal()
+    # Fetch the top 6 wallets based on last_used timestamp
     top_six = (
         db.query(Wallet)
         .with_entities(Wallet.id, Wallet.name, Wallet.balance)
@@ -31,10 +33,51 @@ def render_main_page():
         rendered_wallets.append(
             {"id": wallet.id, "name": wallet.name, "balance": wallet.balance}
         )
+
+    # Calculate total balance across all wallets
     all_balances = db.query(Wallet).with_entities(Wallet.balance).all()
     total_balance = sum(wallet.balance for wallet in all_balances)
+
+    # Fetch transaction data
+    raw_transaction_data = (
+        db.query(Transactions)
+        .join(Wallet, Transactions.wallet_id == Wallet.id)
+        .with_entities(
+            Transactions.date,
+            Transactions.tags,
+            Transactions.category,
+            Transactions.amount,
+            Wallet.name.label("wallet_name"),
+        )
+        .order_by(Transactions.date.desc())
+        .all()
+    )
+
+    transaction_data = []
+    for tx in raw_transaction_data:
+        transaction_data.append(
+            {
+                "date": tx.date.strftime("%Y-%m-%d"),
+                "tags": tx.tags,
+                "category": tx.category,
+                "amount": tx.amount,
+                "wallet_name": tx.wallet_name,
+            }
+        )
+
+    # Fetch Canvas Data
+    raw_canvas_data = (
+        db.query(Transactions.category, func.sum(Transactions.amount).label("total"))
+        .group_by(Transactions.category)
+        .all()
+    )
+
+    canvas_data = {
+        "labels": [row.category for row in raw_canvas_data],
+        "data": [float(row.total) for row in raw_canvas_data],
+    }
     db.close()
-    return rendered_wallets, total_balance
+    return rendered_wallets, total_balance, transaction_data, canvas_data
 
 
 @app.post("/api/render_wallet_page/{wallet_id}")

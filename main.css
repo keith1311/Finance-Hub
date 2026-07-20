@@ -2,7 +2,7 @@
   --bg: #0f1317;
   --card: #1a1d26;
   --inner: #14161f;
-  --accent: #3b6285;
+  --accent: #3b6387;
   --muted: #8a92a6;
   --text: #ffffff;
 }
@@ -14,6 +14,7 @@
 html,
 body {
   height: 100%;
+  overflow: hidden;
   margin: 0;
   padding: 0;
   background: var(--bg);
@@ -30,8 +31,12 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  max-height: 100vh;
+  width: 100%;
   padding: 18px;
   gap: 12px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .header {
@@ -62,10 +67,12 @@ body {
 
 .workspace {
   display: grid;
-  grid-template-columns: 3fr 1fr;
+  grid-template-columns: minmax(0, 3fr) minmax(280px, 1fr);
   gap: 18px;
   align-items: stretch;
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Left panel */
@@ -73,6 +80,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 0;
+}
+
+.right {
+  min-height: 0;
 }
 
 .left .section-title {
@@ -219,45 +231,58 @@ body {
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
 .table-headers {
   display: flex;
-  gap: 120px;
+  gap: 16px;
   color: var(--muted);
   font-weight: 600;
-  padding: 6px 20px;
+  padding: 6px 16px;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  background: var(--inner);
+  z-index: 1;
 }
 
+/* Force every header title to divide available space equally */
 .table-headers div {
   flex: 1;
+  text-align: center;
 }
 
 .table-scroll {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   margin-top: 8px;
   min-height: 0;
+  scrollbar-color: #3a4150 #1a1d26;
+  scrollbar-width: thin;
 }
 
-.table-row {
+.table_details {
   display: flex;
-  gap: 120px;
-  padding: 10px 4px;
-  border-bottom: 1px solid #121418;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0;
   color: #cbd3da;
-  flex-shrink: 0;
 }
 
-.table-row div {
+.table-row-item {
+  display: flex;
+  flex-direction: row;
+  gap: 16px; /* Matches the header gap */
+  align-items: center;
+  padding: 8px 16px; /* Matches header padding for alignment */
+  border-bottom: 1px solid #121418;
+}
+
+/* Force every cell in the row to take up the exact same width as the header above it */
+.table-row-item div {
   flex: 1;
-}
-
-.placeholder {
-  color: var(--muted);
-  font-style: italic;
-  padding: 18px;
   text-align: center;
 }
 
