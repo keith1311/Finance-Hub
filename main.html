@@ -9,6 +9,7 @@
   </head>
 
   <body>
+    <script src="main.js" defer></script>
     <div class="container">
       <div class="header">
         <div class="title">FINANCE HUB</div>
@@ -31,9 +32,18 @@
             <div class="manage-wrapper">
               <button class="manage-btn">Manage ▾</button>
               <div class="dropdown-menu">
-                <a>Create Wallet</a>
+                <a
+                  href="#"
+                  onclick="
+                    document.getElementById('create-dialog').showModal();
+                    return false;
+                  "
+                >
+                  Create Wallet</a
+                >
                 <a>View All Wallet</a>
                 <a>Settings</a>
+                <a>Filter</a>
               </div>
             </div>
           </div>
@@ -49,11 +59,33 @@
                 </div>
                 <button class="menu-btn">⋯</button>
                 <div class="dropdown-menu">
-                  <a>Rename</a>
-                  <a>Delete</a>
-                  <a>Lock</a>
+                  <a
+                    href="#"
+                    onclick="
+                      document.getElementById('rename-dialog').showModal();
+                      return false;
+                    "
+                    >Rename</a
+                  >
+                  <a
+                    href="#"
+                    onclick="
+                      document.getElementById('delete-dialog').showModal();
+                      return false;
+                    "
+                    >Delete</a
+                  >
+                  <a
+                    href="#"
+                    onclick="
+                      document.getElementById('password-dialog').showModal();
+                      return false;
+                    "
+                    >Lock</a
+                  >
                   <a>Censor</a>
                   <a>Hide</a>
+                  <a>Pin</a>
                 </div>
               </div>
               <a href="" class="view-btn">VIEW DETAILS</a>
@@ -71,9 +103,7 @@
             </div>
             <div style="height: 1px; background: #222633; margin: 6px 0"></div>
             <div class="table-scroll">
-              <div class="table-details" id="table-details">
-                [ Your log loop data will populate new rows here dynamically ]
-              </div>
+              <div class="table-details" id="table-details"></div>
             </div>
           </div>
         </div>
@@ -87,12 +117,109 @@
               <canvas id="expenseChart"></canvas>
             </div>
             <div class="monthly-total">
-              Monthly Total: <span style="font-size: 18px">RM0.00</span>
+              Monthly Total:
+              <span style="font-size: 18px" id="monthly-total">RM0.00</span>
             </div>
           </div>
         </div>
       </div>
     </div>
-    <script src="main.js" defer></script>
+    // Rename Dialog
+    <dialog class="dialog-box" id="rename-dialog">
+      <h3>Rename Wallet</h3>
+
+      <div class="input-group">
+        <label for="new-name">Wallet Name</label>
+        <input
+          type="text"
+          id="new-name"
+          name="new-name"
+          placeholder="e.g. Salary"
+        />
+      </div>
+
+      <div class="dialog-btn">
+        <button
+          onclick="
+            document.getElementById('new-name').value = '';
+            document.getElementById('rename-dialog').close();
+          "
+          class="btn-cancel"
+        >
+          Cancel
+        </button>
+        <button class="btn-save">Rename Wallet</button>
+      </div>
+    </dialog>
+    // Delete Dialog
+    <dialog class="dialog-box" id="delete-dialog">
+      <h3>Delete Wallet</h3>
+      <p>Are you sure? This action cannot be undone</p>
+
+      <div class="dialog-btn">
+        <button
+          onclick="document.getElementById('delete-dialog').close()"
+          class="btn-cancel"
+        >
+          Cancel
+        </button>
+        <button class="btn-dlt">Delete Wallet</button>
+      </div>
+    </dialog>
+    // Lock Dialog
+    <dialog class="dialog-box" id="password-dialog">
+      <h3>Lock Wallet</h3>
+
+      <div class="input-group">
+        <label for="password">Lock The Wallet With A Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          autocomplete="new-password"
+          placeholder="Enter Password Here..."
+        />
+      </div>
+
+      <div class="dialog-btn">
+        <button
+          onclick="
+            document.getElementById('password').value = '';
+            document.getElementById('password-dialog').close();
+          "
+          class="btn-cancel"
+        >
+          Cancel
+        </button>
+        <button class="btn-save">Lock Wallet</button>
+      </div>
+    </dialog>
+    // Create Dialog
+    <dialog class="dialog-box" id="create-dialog">
+      <h3>Create Wallet</h3>
+
+      <div class="input-group">
+        <label for="password">Give A Name To The Wallet</label>
+        <input
+          type="text"
+          id="new-wallet"
+          name="new-wallet"
+          placeholder="e.g. Salary"
+        />
+      </div>
+
+      <div class="dialog-btn">
+        <button
+          onclick="
+            document.getElementById('new-wallet').value = '';
+            document.getElementById('create-dialog').close();
+          "
+          class="btn-cancel"
+        >
+          Cancel
+        </button>
+        <button class="btn-save">Create Wallet</button>
+      </div>
+    </dialog>
   </body>
 </html>

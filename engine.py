@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import SessionLocal
 from tables import Transactions, Wallet
 from datetime import datetime
-from sqlalchemy import func
+from sqlalchemy import func, extract
 
 
 app = FastAPI()
@@ -21,13 +21,7 @@ app.add_middleware(
 def render_main_page():
     db = SessionLocal()
     # Fetch the top 6 wallets based on last_used timestamp
-    top_six = (
-        db.query(Wallet)
-        .with_entities(Wallet.id, Wallet.name, Wallet.balance)
-        .order_by(Wallet.last_used.desc())
-        .limit(6)
-        .all()
-    )
+    top_six = db.query(Wallet).order_by(Wallet.last_used.desc()).limit(6).all()
     rendered_wallets = []
     for wallet in top_six:
         rendered_wallets.append(
@@ -76,8 +70,25 @@ def render_main_page():
         "labels": [row.category for row in raw_canvas_data],
         "data": [float(row.total) for row in raw_canvas_data],
     }
+
+    # Fetch Monthly Total
+    # Get current year and month numbers
+    current_year = datetime.now().year
+    current_month = datetime.now().month
+
+    # Fetch Monthly Total
+    monthly_total = (
+        db.query(func.sum(Transactions.amount))
+        .filter(
+            extract("year", Transactions.date) == current_year,
+            extract("month", Transactions.date) == current_month,
+        )
+        .scalar()
+    ) or 0.0
+
     db.close()
-    return rendered_wallets, total_balance, transaction_data, canvas_data
+
+    return rendered_wallets, total_balance, transaction_data, canvas_data, monthly_total
 
 
 @app.post("/api/render_wallet_page/{wallet_id}")

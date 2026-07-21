@@ -2,8 +2,13 @@ async function fetchAndRenderMainPage() {
   try {
     // 1. Fetch data from your Python API
     const response = await fetch("http://127.0.0.1:8000/api/render_main_page");
-    const [walletData, totalBalance, transactionData, canvasData] =
-      await response.json();
+    const [
+      walletData,
+      totalBalance,
+      transactionData,
+      canvasData,
+      monthlyTotal,
+    ] = await response.json();
 
     // Update the total balance display
     document.getElementById("total-balance").textContent =
@@ -60,7 +65,6 @@ async function fetchAndRenderMainPage() {
     });
 
     // Render the canvas chart
-
     const ctx = document.getElementById("expenseChart");
 
     const myChart = new Chart(ctx, {
@@ -84,6 +88,7 @@ async function fetchAndRenderMainPage() {
       },
       options: {
         responsive: true,
+        maintainAspectRatio: true,
         plugins: {
           legend: {
             position: "bottom",
@@ -92,6 +97,10 @@ async function fetchAndRenderMainPage() {
         },
       },
     });
+
+    // Update Monthly Total
+    document.getElementById("monthly-total").textContent =
+      `RM${monthlyTotal.toFixed(2)}`;
   } catch (error) {
     console.error("Failed to load wallets:", error);
   }
@@ -103,7 +112,6 @@ fetchAndRenderMainPage();
 document.addEventListener("click", function (e) {
   // 1. Identify if a button or a menu link was clicked
   const targetBtn = e.target.closest(".menu-btn, .manage-btn");
-  const menuLink = e.target.closest(".dropdown-menu a");
 
   // 2. Handle Button Clicks (Toggle Menus)
   if (targetBtn) {
@@ -119,12 +127,6 @@ document.addEventListener("click", function (e) {
     if (menu && menu.classList.contains("dropdown-menu")) {
       menu.classList.toggle("active");
     }
-  }
-  // 3. Handle Menu Link Clicks (Actions)
-  else if (menuLink) {
-    alert("Action: " + menuLink.textContent);
-    // Close the menu after clicking an action
-    menuLink.parentElement.classList.remove("active");
   }
   // 4. Close menus if clicking anywhere else on the page
   else {
