@@ -1,9 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from database import SessionLocal
 from tables import Transactions, Wallet
 from datetime import datetime
 from sqlalchemy import func, extract
+from pydantic import BaseModel
 
 
 app = FastAPI()
@@ -25,7 +26,12 @@ def render_main_page():
     rendered_wallets = []
     for wallet in top_six:
         rendered_wallets.append(
-            {"id": wallet.id, "name": wallet.name, "balance": wallet.balance}
+            {
+                "id": wallet.id,
+                "name": wallet.name,
+                "balance": wallet.balance,
+                "password": wallet.password,
+            }
         )
 
     # Calculate total balance across all wallets
@@ -106,3 +112,66 @@ def render_wallet_page(wallet_id: str):
     wallet_balance = wallet.balance
     db.close()
     return {"name": wallet_name, "balance": wallet_balance}
+
+
+class RenameWallet(BaseModel):
+    walletId: str
+    newName: str
+
+
+@app.post("/api/rename-wallet")
+def rename_wallet(data: RenameWallet):
+    db = SessionLocal()
+
+    try:
+        # 1. Fetch all existing wallet names
+        all_wallets = db.query(Wallet).with_entities(Wallet.name).all()
+        existing_names = [wallet.name for wallet in all_wallets]
+
+        # 2. Check for duplicates
+        if data.newName in existing_names:
+            raise HTTPException(
+                status_code=400, detail="A wallet with this name already exists."
+            )
+
+        # 3. Find the target wallet
+        target_wallet = db.query(Wallet).filter(Wallet.id == data.walletId).first()
+        if not target_wallet:
+            raise HTTPException(status_code=404, detail="Wallet not found")
+
+        # 4. Update fields
+        target_wallet.name = data.newName
+        target_wallet.last_used = datetime.now()
+
+        # 5. Commit changes
+        db.commit()
+        db.refresh(target_wallet)
+
+        return {"status": "No Error", "message": "Wallet renamed successfully"}
+
+    finally:
+        db.close()
+
+
+@app.post("/api/delete-wallet/{wallet_id}")
+def delete_wallet(wallet_id: str):
+    db = SessionLocal()
+    try:
+        # 1. Find the wallet matching the wallet_id
+        # (Assuming your SQLAlchemy model is named `Wallet` and the primary key or column is `id`)
+        wallet = db.query(Wallet).filter(Wallet.id == wallet_id).first()
+
+        # 2. Check if the wallet exists
+        if not wallet:
+            raise HTTPException(
+                status_code=404, detail="The requested wallet could not be found."
+            )
+
+        # 3. Delete the wallet and commit the transaction
+        db.delete(wallet)
+        db.commit()
+
+        return {"message": "Wallet deleted successfully"}
+
+    finally:
+        db.close()

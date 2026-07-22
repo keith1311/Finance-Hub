@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Finance Hub</title>
     <link rel="stylesheet" href="main.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
 
@@ -39,11 +43,11 @@
                     return false;
                   "
                 >
-                  Create Wallet</a
+                  <i class="fa-solid fa-square-plus"></i> Create Wallet</a
                 >
-                <a>View All Wallet</a>
-                <a>Settings</a>
-                <a>Filter</a>
+                <a> <i class="fa-solid fa-wallet"></i> View All Wallet</a>
+                <a> <i class="fa-solid fa-gear"></i> Settings</a>
+                <a> <i class="fa-solid fa-filter"></i> Filter</a>
               </div>
             </div>
           </div>
@@ -59,36 +63,23 @@
                 </div>
                 <button class="menu-btn">⋯</button>
                 <div class="dropdown-menu">
-                  <a
-                    href="#"
-                    onclick="
-                      document.getElementById('rename-dialog').showModal();
-                      return false;
-                    "
-                    >Rename</a
-                  >
-                  <a
-                    href="#"
-                    onclick="
-                      document.getElementById('delete-dialog').showModal();
-                      return false;
-                    "
-                    >Delete</a
-                  >
-                  <a
-                    href="#"
-                    onclick="
-                      document.getElementById('password-dialog').showModal();
-                      return false;
-                    "
-                    >Lock</a
-                  >
-                  <a>Censor</a>
-                  <a>Hide</a>
-                  <a>Pin</a>
+                  <a href="#" class="rename-link">
+                    <i class="fa-solid fa-pen-to-square"></i> Rename
+                  </a>
+                  <a href="#" class="delete-link">
+                    <i class="fa-solid fa-trash-can"></i> Delete
+                  </a>
+                  <a href="#" class="lock-link">
+                    <i class="fa-solid fa-lock"></i> Lock
+                  </a>
+                  <a> <i class="fa-solid fa-asterisk"></i> Censor</a>
+                  <a> <i class="fa-solid fa-eye-slash"></i> Hide</a>
+                  <a> <i class="fa-solid fa-thumbtack"></i> Pin</a>
                 </div>
               </div>
-              <a href="" class="view-btn">VIEW DETAILS</a>
+              <a href="" class="view-btn">
+                <i class="fa-solid fa-folder-open"></i> OPEN WALLET</a
+              >
             </div>
           </template>
 
@@ -124,102 +115,190 @@
         </div>
       </div>
     </div>
-    // Rename Dialog
+
+    //====================== Rename Dialog ======================//
     <dialog class="dialog-box" id="rename-dialog">
-      <h3>Rename Wallet</h3>
+      <form id="rename-form" method="dialog">
+        <h3 id="rename-dialog-title">Rename Wallet</h3>
 
-      <div class="input-group">
-        <label for="new-name">Wallet Name</label>
-        <input
-          type="text"
-          id="new-name"
-          name="new-name"
-          placeholder="e.g. Salary"
-        />
-      </div>
+        <div class="input-group">
+          <label for="new-name">New Wallet Name</label>
+          <input
+            type="text"
+            id="new-name"
+            name="new-name"
+            placeholder="e.g. Salary"
+          />
+          <p class="warning-text" id="rename-warning-text"></p>
+        </div>
 
-      <div class="dialog-btn">
-        <button
-          onclick="
-            document.getElementById('new-name').value = '';
-            document.getElementById('rename-dialog').close();
-          "
-          class="btn-cancel"
-        >
-          Cancel
-        </button>
-        <button class="btn-save">Rename Wallet</button>
-      </div>
+        <div class="dialog-btn">
+          <button
+            onclick="
+              document.getElementById('new-name').value = '';
+              document.getElementById('rename-dialog').close();
+            "
+            class="btn-cancel"
+            type="button"
+          >
+            <i class="fa-solid fa-xmark"></i> Cancel
+          </button>
+          <button class="btn-save" type="submit">
+            <i class="fa-solid fa-pen-to-square"></i> Rename Wallet
+          </button>
+        </div>
+      </form>
     </dialog>
-    // Delete Dialog
+
+    //====================== Delete1 Dialog ======================//
     <dialog class="dialog-box" id="delete-dialog">
-      <h3>Delete Wallet</h3>
-      <p>Are you sure? This action cannot be undone</p>
+      <h3 id="delete-dialog-title">Delete Wallet</h3>
+      <p>This will permanently delete all data related to the wallet.</p>
 
       <div class="dialog-btn">
         <button
           onclick="document.getElementById('delete-dialog').close()"
           class="btn-cancel"
+          type="button"
         >
-          Cancel
+          <i class="fa-solid fa-xmark"></i> Cancel
         </button>
-        <button class="btn-dlt">Delete Wallet</button>
+        <!-- Changed to type="button" since there's no form here -->
+        <button
+          class="btn-dlt"
+          type="button"
+          onclick="
+            document.getElementById('delete-dialog2').showModal();
+            document.getElementById('delete-dialog').close();
+          "
+        >
+          <i class="fa-solid fa-trash-can"></i> Delete Wallet
+        </button>
       </div>
     </dialog>
-    // Lock Dialog
+
+    //====================== Delete2 Dialog ======================//
+    <dialog class="dialog-box2" id="delete-dialog2">
+      <h3>Are you sure?</h3>
+      <p style="color: #e74c3c">This action cannot be undone.</p>
+
+      <div class="dialog-btn">
+        <button
+          onclick="document.getElementById('delete-dialog2').close()"
+          class="btn-cancel"
+          type="button"
+        >
+          <i class="fa-solid fa-xmark"></i> No
+        </button>
+        <!-- Changed to type="button" since there's no form here -->
+        <button class="btn-dlt" type="button" onclick="deleteWallet()">
+          <i class="fa-solid fa-trash-can"></i> Yes
+        </button>
+      </div>
+    </dialog>
+
+    //====================== Lock Dialog ======================//
     <dialog class="dialog-box" id="password-dialog">
-      <h3>Lock Wallet</h3>
+      <form id="password-form" method="dialog">
+        <h3 id="password-dialog-title">Lock Wallet</h3>
 
-      <div class="input-group">
-        <label for="password">Lock The Wallet With A Password</label>
-        <input
-          type="password"
-          id="password"
-          name="password"
-          autocomplete="new-password"
-          placeholder="Enter Password Here..."
-        />
-      </div>
+        <div class="input-group">
+          <label for="password">Lock The Wallet With A Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            autocomplete="new-password"
+            placeholder="Enter Password Here..."
+          />
+          <p class="warning-text" id="lock-warning-text"></p>
+        </div>
 
-      <div class="dialog-btn">
-        <button
-          onclick="
-            document.getElementById('password').value = '';
-            document.getElementById('password-dialog').close();
-          "
-          class="btn-cancel"
-        >
-          Cancel
-        </button>
-        <button class="btn-save">Lock Wallet</button>
-      </div>
+        <div class="dialog-btn">
+          <button
+            onclick="
+              document.getElementById('password').value = '';
+              document.getElementById('password-dialog').close();
+            "
+            class="btn-cancel"
+            type="button"
+          >
+            <i class="fa-solid fa-xmark"></i> Cancel
+          </button>
+          <!-- Fixed 'typr' to 'type' -->
+          <button class="btn-save" type="submit">
+            <i class="fa-solid fa-lock"></i> Lock Wallet
+          </button>
+        </div>
+      </form>
     </dialog>
-    // Create Dialog
+
+    //====================== Create Dialog ======================//
     <dialog class="dialog-box" id="create-dialog">
-      <h3>Create Wallet</h3>
+      <form id="create-form" method="dialog">
+        <h3>Create Wallet</h3>
 
-      <div class="input-group">
-        <label for="password">Give A Name To The Wallet</label>
-        <input
-          type="text"
-          id="new-wallet"
-          name="new-wallet"
-          placeholder="e.g. Salary"
-        />
-      </div>
+        <div class="input-group">
+          <label for="new-wallet">Give A Name To The Wallet</label>
+          <input
+            type="text"
+            id="new-wallet"
+            name="new-wallet"
+            placeholder="e.g. Salary"
+          />
+          <p class="warning-text" id="create-warning-text"></p>
+        </div>
 
-      <div class="dialog-btn">
-        <button
-          onclick="
-            document.getElementById('new-wallet').value = '';
-            document.getElementById('create-dialog').close();
-          "
-          class="btn-cancel"
-        >
-          Cancel
-        </button>
-        <button class="btn-save">Create Wallet</button>
-      </div>
+        <div class="dialog-btn">
+          <button
+            onclick="
+              document.getElementById('new-wallet').value = '';
+              document.getElementById('create-dialog').close();
+            "
+            class="btn-cancel"
+            type="button"
+          >
+            <i class="fa-solid fa-xmark"></i> Cancel
+          </button>
+          <button class="btn-save" type="submit">
+            <i class="fa-solid fa-square-plus"></i> Create Wallet
+          </button>
+        </div>
+      </form>
+    </dialog>
+    //====================== Access Dialog ======================//
+    <dialog class="dialog-box" id="access-dialog">
+      <form id="access-form" method="dialog">
+        <h3>This Wallet Is Locked! <i class="fa-solid fa-lock"></i></h3>
+
+        <div class="input-group">
+          <label for="access-wallet">Verify Your Identify</label>
+          <input
+            type="password"
+            id="access-wallet"
+            name="access-wallet"
+            autocomplete="current-password"
+            placeholder="Enter Password Here..."
+          />
+          <p class="warning-text" id="access-warning-text"></p>
+        </div>
+
+        <div class="dialog-btn">
+          <button
+            onclick="
+              document.getElementById('access-wallet').value = '';
+              document.getElementById('access-dialog').close();
+            "
+            class="btn-cancel"
+            type="button"
+          >
+            <i class="fa-solid fa-xmark"></i> Cancel
+          </button>
+          <button class="btn-save" type="submit">
+            <i class="fa-solid fa-arrow-right-to-bracket"></i> Access Wallet
+          </button>
+        </div>
+      </form>
     </dialog>
   </body>
 </html>

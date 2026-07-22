@@ -11,6 +11,8 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from database import Base, engine
 import uuid
+from datetime import datetime
+from database import SessionLocal
 
 
 class Wallet(Base):

@@ -26,10 +26,72 @@ async function fetchAndRenderMainPage() {
 
       const link = clone.querySelector(".view-btn");
       link.href = `wallets.html?id=${wallet.id}`; // Set the href to the wallet's ID
+      link.dataset.password = wallet.password;
+
+      link.addEventListener("click", (e) => {
+        // Check if the pin/password property is NOT equal to "'" (meaning it's locked/protected)
+        if (wallet.password !== "'") {
+          e.preventDefault(); // Stop normal navigation
+
+          const dialog = document.getElementById("access-dialog");
+          dialog.dataset.link = `wallets.html?id=${wallet.id}`;
+          dialog.dataset.password = wallet.password;
+
+          dialog.showModal();
+        } else {
+          // If it equals "'", do nothing extra and let it navigate normally to wallets.html?id=${wallet.id}
+        }
+      });
+
       // Set the data using textContent
       clone.querySelector(".name").textContent = wallet.name;
       clone.querySelector(".balance").textContent =
         `RM ${wallet.balance.toFixed(2)}`;
+
+      // --- RENAME ACTION ---
+      const renameLink = clone.querySelector(".rename-link");
+      renameLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        const dialog = document.getElementById("rename-dialog");
+        const title = document.getElementById("rename-dialog-title");
+
+        dialog.dataset.walletId = wallet.id; // Save ID to dialog
+        dialog.dataset.walletName = wallet.name;
+
+        title.textContent = `Rename "${wallet.name}" Wallet`;
+
+        dialog.showModal();
+      });
+
+      // --- DELETE ACTION ---
+      const deleteLink = clone.querySelector(".delete-link");
+      deleteLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        const dialog = document.getElementById("delete-dialog");
+        const title = document.getElementById("delete-dialog-title");
+
+        dialog.dataset.walletId = wallet.id; // Save ID to dialog
+        dialog.dataset.walletName = wallet.name;
+
+        title.textContent = `Delete "${wallet.name}" Wallet?`;
+
+        dialog.showModal();
+      });
+
+      // --- LOCK ACTION ---
+      const lockLink = clone.querySelector(".lock-link");
+      lockLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        const dialog = document.getElementById("password-dialog");
+        const title = document.getElementById("password-dialog-title");
+
+        dialog.dataset.walletId = wallet.id;
+        dialog.dataset.walletName = wallet.name;
+
+        title.textContent = `Lock "${wallet.name}" Wallet`;
+
+        dialog.showModal();
+      });
 
       // Append the card (NOT the grid) to the grid container
       document.getElementById("wallet-grid").appendChild(clone);
@@ -109,6 +171,7 @@ async function fetchAndRenderMainPage() {
 // 3. Trigger the function when the page loads
 fetchAndRenderMainPage();
 
+//====================== Dropdown Menu Function ======================//
 document.addEventListener("click", function (e) {
   // 1. Identify if a button or a menu link was clicked
   const targetBtn = e.target.closest(".menu-btn, .manage-btn");
@@ -133,5 +196,140 @@ document.addEventListener("click", function (e) {
     document.querySelectorAll(".dropdown-menu.active").forEach((m) => {
       m.classList.remove("active");
     });
+  }
+});
+
+//====================== Rename Function ======================//
+const renameForm = document.getElementById("rename-form");
+const renameDialog = document.getElementById("rename-dialog");
+const newNameInput = document.getElementById("new-name");
+const renameWarningText = document.getElementById("rename-warning-text");
+
+// Make the submit event listener async so we can use await
+renameForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  // Grab dataset values HERE when the form is actually submitted
+  const walletName = renameDialog.dataset.walletName;
+  const walletId = renameDialog.dataset.walletId;
+
+  // 1. Grab the value from input
+  const newName = newNameInput.value
+    .trim() // Remove spaces from the very beginning and end
+    .replace(/\s+/g, " ") // Replace multiple consecutive spaces in between words with a single space
+    .toLowerCase() // Convert everything to lowercase first
+    .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize the first letter of every word
+
+  // 2. RUN YOUR JS PROCESSING / VALIDATION
+  if (newName === "") {
+    renameWarningText.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Name cannot be empty.';
+    return;
+  }
+
+  if (newName === walletName) {
+    renameWarningText.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> This is already your current wallet name.';
+    newNameInput.value = "";
+    return;
+  }
+
+  // 3. POST TO BACKEND (via fetch)
+  try {
+    const response = await fetch("http://127.0.0.1:8000/api/rename-wallet", {
+      // Point to your actual rename endpoint
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        walletId: walletId,
+        newName: newName,
+      }),
+    });
+
+    // 1. Check if the response failed (e.g., status 400 or 404)
+    if (!response.ok) {
+      const errorData = await response.json(); // Parses {"detail": "..."}
+      renameWarningText = `<i class="fa-solid fa-triangle-exclamation"></i> ${errorData.detail}`;
+      newNameInput.value = "";
+      return;
+    }
+  } catch (error) {
+    console.error("Error updating wallet:", error);
+    event.preventDefault(); // Stop dialog from closing if backend save failed
+    alert("An error occurred while saving. Please try again.");
+    return;
+  }
+
+  // 4. Clean up the input field for next time
+  newNameInput.value = "";
+  renameWarningText.innerHTML = "";
+  renameDialog.close();
+  location.reload();
+});
+
+//====================== Delete Function ======================//
+async function deleteWallet() {
+  const deleteDialog = document.getElementById("delete-dialog");
+  const deleteDialog2 = document.getElementById("delete-dialog2");
+  const walletId = deleteDialog.dataset.walletId;
+  try {
+    // 2. Send the POST request to your FastAPI backend
+    const response = await fetch(
+      "http://127.0.0.1:8000/api/delete-wallet/" + walletId,
+      {
+        method: "POST",
+      },
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      alert(`Error: ${errorData.detail}`);
+      return;
+    }
+
+    deleteDialog2.close();
+    location.reload();
+  } catch (error) {
+    console.error("Error updating wallet:", error);
+    event.preventDefault(); // Stop dialog from closing if backend save failed
+    alert("An error occurred while saving. Please try again.");
+    return;
+  }
+}
+
+// ====================== Access Wallet Function ======================//
+const accessDialog = document.getElementById("access-dialog");
+const inputPassword = document.getElementById("access-wallet");
+const accessWarningText = document.getElementById("access-warning-text");
+const accessForm = document.getElementById("access-form");
+
+accessForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const actualPassword = accessDialog.dataset.password;
+  const walletPage = accessDialog.dataset.link;
+  const enteredValue = inputPassword.value;
+
+  // 1. Check length
+  if (enteredValue.length < 8) {
+    accessWarningText.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Passwords must contain a minimum of 8 characters.';
+    inputPassword.value = "";
+    return;
+  }
+
+  // 2. Check if password matches
+  if (enteredValue === actualPassword) {
+    accessWarningText.innerHTML = "";
+    inputPassword.value = "";
+    accessDialog.close();
+
+    window.location.href = walletPage;
+  } else {
+    accessWarningText.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Incorrect password. Please try again.';
+    inputPassword.value = "";
+    return;
   }
 });
