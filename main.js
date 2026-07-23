@@ -223,16 +223,14 @@ async function fetchAndRenderMainPage() {
     if (transactionData.length === 0) {
       tableDetailsContainer.innerHTML =
         '<div style="padding: 12px; text-align: center; color: #888;">No transactions found.</div>';
-      return;
-    }
+    } else {
+      // Loop through backend data and create rows
+      transactionData.forEach((tx) => {
+        const rowDiv = document.createElement("div");
+        // Add a class name for your row styling (e.g., flex layout matching your headers)
+        rowDiv.className = "table-row-item";
 
-    // Loop through backend data and create rows
-    transactionData.forEach((tx) => {
-      const rowDiv = document.createElement("div");
-      // Add a class name for your row styling (e.g., flex layout matching your headers)
-      rowDiv.className = "table-row-item";
-
-      rowDiv.innerHTML = `
+        rowDiv.innerHTML = `
                 <div>${tx.date}</div>
                 <div>${tx.tags || "-"}</div>
                 <div>${tx.category}</div>
@@ -240,11 +238,18 @@ async function fetchAndRenderMainPage() {
                 <div>${tx.wallet_name || tx.wallet_id}</div>
             `;
 
-      tableDetailsContainer.appendChild(rowDiv);
-    });
+        tableDetailsContainer.appendChild(rowDiv);
+      });
+    }
 
     // Render the canvas chart
     const ctx = document.getElementById("expenseChart");
+
+    if (!canvasData.labels || canvasData.labels.length === 0) {
+      document.getElementById("chart-area").innerHTML =
+        '<div style="padding: 12px; text-align: center; color: #888;">No data available.</div>';
+      return;
+    }
 
     const myChart = new Chart(ctx, {
       type: "pie",

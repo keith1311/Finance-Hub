@@ -115,18 +115,76 @@ def render_main_page():
 @app.post("/api/render_wallet_page/{wallet_id}")
 def render_wallet_page(wallet_id: str):
     db = SessionLocal()
-    wallet = db.query(Wallet).filter(Wallet.id == wallet_id).first()
+    try:
+        # Find Wallet
+        wallet = db.query(Wallet).filter(Wallet.id == wallet_id).first()
 
-    if not wallet:
+        if not wallet:
+            raise HTTPException(status_code=404, detail="Wallet not found")
+
+        # Update Last_Used
+        wallet.last_used = datetime.now()  # Update last_used timestamp
+        db.commit()
+
+        # Get Wallet Name And Balance (Fixed class attribute syntax error)
+        wallet_data = {
+            "name": wallet.name,
+            "balance": float(wallet.balance) if wallet.balance is not None else 0.0,
+        }
+
+        # Fetch Canvas Data filtered by wallet_id
+        raw_canvas_data = (
+            db.query(
+                Transactions.category, func.sum(Transactions.amount).label("total")
+            )
+            .filter(Transactions.wallet_id == wallet_id)
+            .group_by(Transactions.category)
+            .all()
+        )
+
+        # Build canvas data with safety checks
+        canvas_data = {
+            "labels": [row.category for row in raw_canvas_data]
+            if raw_canvas_data
+            else [],
+            "data": [
+                float(row.total) if row.total is not None else 0.0
+                for row in raw_canvas_data
+            ]
+            if raw_canvas_data
+            else [],
+        }
+
+        # Fetch transaction data
+        raw_transaction_data = (
+            db.query(Transactions)
+            .filter(Transactions.wallet_id == wallet_id)
+            .with_entities(
+                Transactions.date,
+                Transactions.tags,
+                Transactions.category,
+                Transactions.amount,
+            )
+            .order_by(Transactions.date.desc())
+            .all()
+        )
+
+        # Refined list comprehension with safety checks
+        transaction_data = [
+            {
+                "date": tx.date.strftime("%Y-%m-%d") if tx.date else None,
+                "tags": tx.tags,
+                "category": tx.category,
+                "amount": float(tx.amount) if tx.amount is not None else 0.0,
+            }
+            for tx in raw_transaction_data
+        ]
+
+        # Return a unified dictionary response containing everything
+        return {wallet_data, canvas_data, transaction_data}
+
+    finally:
         db.close()
-        return {"error": "Wallet not found"}, 404
-
-    wallet.last_used = datetime.now()  # Update last_used timestamp
-    db.commit()
-    wallet_name = wallet.name
-    wallet_balance = wallet.balance
-    db.close()
-    return {"name": wallet_name, "balance": wallet_balance}
 
 
 class RenameWallet(BaseModel):

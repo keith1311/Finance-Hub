@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Wallet</title>
     <link rel="stylesheet" href="wallets.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
 
   <body>
@@ -30,13 +35,22 @@
               </div>
             </div>
             <div class="buttons">
-              <button class="btn" id="add-income">Add Income</button>
-              <button class="btn" id="create-transaction">
-                Create Transaction
+              <button class="btn" id="add-income">
+                <i class="fa-solid fa-money-check-dollar"></i>&nbsp; Add Income
               </button>
-              <button class="btn" id="open-settings">Settings</button>
-              <button class="btn" id="filter-transactions">Filter</button>
-              <a href="main.html" class="btn" id="close-wallet">Close Wallet</a>
+              <button class="btn" id="create-transaction">
+                <i class="fa-solid fa-cart-shopping"></i>&nbsp;Create
+                Transaction
+              </button>
+              <button class="btn" id="open-settings">
+                <i class="fa-solid fa-gear"></i>&nbsp;Settings
+              </button>
+              <button class="btn" id="filter-transactions">
+                <i class="fa-solid fa-filter"></i>&nbsp;Filter
+              </button>
+              <a href="main.html" class="btn" id="close-wallet"
+                ><i class="fa-solid fa-folder-closed"></i>&nbsp;Close Wallet</a
+              >
             </div>
           </div>
 
@@ -48,11 +62,9 @@
               <div>Category</div>
               <div>Amount</div>
             </div>
-            <div class="divider"></div>
+            <div style="height: 1px; background: #222633; margin: 6px 0"></div>
             <div class="table-scroll">
-              <div class="placeholder">
-                [ Your log loop data will populate new rows here dynamically ]
-              </div>
+              <div class="table-details" id="table-details"></div>
             </div>
           </div>
         </div>
@@ -62,8 +74,8 @@
             <div style="font-weight: 700; margin-bottom: 8px">
               MONTHLY EXPENSES
             </div>
-            <div class="chart-area">
-              ⭕<br /><br />[ Donut Chart Canvas Area ]
+            <div class="chart-area" id="chart-area">
+              <canvas id="expenseChart"></canvas>
             </div>
             <div class="monthly-total">
               Monthly Total: <span style="font-size: 18px">RM0.00</span>

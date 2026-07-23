@@ -12,11 +12,76 @@ async function fetchAndRenderWalletPage() {
         method: "POST",
       },
     );
-    const result = await response.json();
+    const [header, canvasData, transactionData] = await response.json();
 
-    document.getElementById("title").textContent = result.name;
+    document.getElementById("title").textContent = header.name;
     document.getElementById("total-balance").textContent =
-      `RM${result.balance.toFixed(2)}`;
+      `RM${header.balance.toFixed(2)}`;
+
+    // Render the canvas chart
+    const ctx = document.getElementById("expenseChart");
+
+    const myChart = new Chart(ctx, {
+      type: "pie",
+      data: {
+        labels: canvasData.labels,
+        datasets: [
+          {
+            data: canvasData.data,
+            backgroundColor: [
+              "#3b82f6",
+              "#10b981",
+              "#f59e0b",
+              "#ef4444",
+              "#8b5cf6",
+              "#ec4899",
+            ],
+            borderWidth: 0,
+          },
+        ],
+      },
+      options: {
+        responsive: false,
+        animation: {
+          duration: 1500,
+        },
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: { color: "#cbd3da", boxWidth: 12 },
+          },
+        },
+      },
+    });
+
+    // Render Transaction Table
+    const tableDetailsContainer = document.getElementById("table-details");
+
+    // Clear the placeholder text
+    tableDetailsContainer.innerHTML = "";
+
+    if (transactionData.length === 0) {
+      tableDetailsContainer.innerHTML =
+        '<div style="padding: 12px; text-align: center; color: #888;">No transactions found.</div>';
+      return;
+    }
+
+    // Loop through backend data and create rows
+    transactionData.forEach((tx) => {
+      const rowDiv = document.createElement("div");
+      // Add a class name for your row styling (e.g., flex layout matching your headers)
+      rowDiv.className = "table-row-item";
+
+      rowDiv.innerHTML = `
+                <div>${tx.date}</div>
+                <div>${tx.tags || "-"}</div>
+                <div>${tx.category}</div>
+                <div>RM ${tx.amount.toFixed(2)}</div>
+            `;
+
+      tableDetailsContainer.appendChild(rowDiv);
+    });
   } catch (error) {
     console.error("Error fetching wallet data:", error);
   }
