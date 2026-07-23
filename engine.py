@@ -22,15 +22,30 @@ app.add_middleware(
 def render_main_page():
     db = SessionLocal()
     # Fetch the top 6 wallets based on last_used timestamp
-    top_six = db.query(Wallet).order_by(Wallet.last_used.desc()).limit(6).all()
+    top_six = (
+        db.query(Wallet)
+        .filter(Wallet.hide == False)
+        .order_by(Wallet.pin.desc(), Wallet.last_used.desc())
+        .limit(6)
+        .all()
+    )
     rendered_wallets = []
     for wallet in top_six:
+        if wallet.censor == True:
+            balance = "******"
+        elif wallet.censor == False:
+            balance = f"{wallet.balance:.2f}"
+        else:
+            balance = wallet.balance
+
         rendered_wallets.append(
             {
                 "id": wallet.id,
                 "name": wallet.name,
-                "balance": wallet.balance,
+                "balance": balance,
                 "password": wallet.password,
+                "censor": wallet.censor,
+                "pin": wallet.pin,
             }
         )
 
@@ -148,7 +163,11 @@ def rename_wallet(data: RenameWallet):
         db.refresh(target_wallet)
 
         return {"status": "No Error", "message": "Wallet renamed successfully"}
-
+    except HTTPException as he:
+        raise he  # Let FastAPI handle 400, 404, etc. properly without converting to 500
+    except Exception as e:
+        db.rollback()  # Undo changes if something unexpected fails
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
 
@@ -163,15 +182,133 @@ def delete_wallet(wallet_id: str):
 
         # 2. Check if the wallet exists
         if not wallet:
-            raise HTTPException(
-                status_code=404, detail="The requested wallet could not be found."
-            )
+            raise HTTPException(status_code=404, detail="Wallet not found")
 
         # 3. Delete the wallet and commit the transaction
         db.delete(wallet)
         db.commit()
 
         return {"message": "Wallet deleted successfully"}
+    except HTTPException as he:
+        raise he  # Let FastAPI handle 400, 404, etc. properly without converting to 500
+    except Exception as e:
+        db.rollback()  # Undo changes if something unexpected fails
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        db.close()
+
+
+class LockWallet(BaseModel):
+    walletId: str
+    password: str
+
+
+@app.post("/api/lock-wallet")
+def lock_wallet(data: LockWallet):
+    db = SessionLocal()
+    try:
+        target_wallet = db.query(Wallet).filter(Wallet.id == data.walletId).first()
+
+        if not target_wallet:
+            raise HTTPException(status_code=404, detail="Wallet not found")
+
+        if target_wallet.password == "":
+            # Update fields
+            target_wallet.password = data.password
+            target_wallet.last_used = datetime.now()
+        else:
+            target_wallet.password = ""
+            target_wallet.last_used = datetime.now()
+
+        # Commit changes
+        db.commit()
+        db.refresh(target_wallet)
+        return {"status": "No Error", "message": "Wallet locked successfully"}
+    except HTTPException as he:
+        raise he  # Let FastAPI handle 400, 404, etc. properly without converting to 500
+    except Exception as e:
+        db.rollback()  # Undo changes if something unexpected fails
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@app.post("/api/create-wallet/{wallet_name}")
+def create_wallet(wallet_name: str):
+    db = SessionLocal()
+    try:
+        existing_wallet = db.query(Wallet).filter(Wallet.name == wallet_name).first()
+        if existing_wallet:
+            raise HTTPException(
+                status_code=400, detail="A wallet with this name already exists."
+            )
+
+        # Create the new database record object
+        new_wallet = Wallet(
+            name=wallet_name,
+            balance=0.0,
+            last_used=datetime.now(),
+            password="",  # Fixed from "'" to an empty string
+            censor=False,
+            hide=False,
+            pin=False,
+        )
+
+        # 2. Add the record to the session
+        db.add(new_wallet)
+
+        # 3. Commit the transaction to save it to the database
+        db.commit()
+
+        # 4. Refresh the instance to get updated fields (like generated IDs)
+        db.refresh(new_wallet)
+
+        return {
+            "status": "No Error",
+            "message": "Wallet created successfully",
+        }
+    except HTTPException as he:
+        raise he  # Let FastAPI handle 400, 404, etc. properly without converting to 500
+    except Exception as e:
+        db.rollback()  # Undo changes if something unexpected fails
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        # 5. Always close the session when done
+        db.close()
+
+
+from fastapi import HTTPException
+
+
+@app.post("/api/{function}/{wallet_id}")
+def toggle(function: str, wallet_id: str):
+    db = SessionLocal()
+    try:
+        target_wallet = db.query(Wallet).filter(Wallet.id == wallet_id).first()
+
+        if not target_wallet:
+            raise HTTPException(status_code=400, detail="Wallet not found")
+
+        if function == "censor":
+            target_wallet.censor = not target_wallet.censor
+        elif function == "hide":
+            target_wallet.hide = not target_wallet.hide
+        elif function == "pin":
+            target_wallet.pin = not target_wallet.pin
+        else:
+            raise HTTPException(status_code=400, detail="Invalid action function")
+
+        db.commit()
+        return {"success": True, "message": f"Successfully toggled {function}"}
+
+    except HTTPException as he:
+        raise he  # Let FastAPI handle 400 properly
+
+    except Exception as e:
+        db.rollback()  # Undo changes if something unexpected fails
+        raise HTTPException(status_code=500, detail=str(e))
 
     finally:
         db.close()

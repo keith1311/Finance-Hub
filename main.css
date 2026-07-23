@@ -14,7 +14,6 @@
 html,
 body {
   height: 100%;
-  overflow: hidden;
   margin: 0;
   padding: 0;
   background: var(--bg);
@@ -30,13 +29,23 @@ body {
 .container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  max-height: 100vh;
   width: 100%;
   padding: 18px;
   gap: 12px;
   box-sizing: border-box;
-  overflow: hidden;
+
+  /* By default (when minimized or on smaller screens), let it grow and scroll naturally */
+  min-height: 100vh;
+  overflow-y: auto;
+}
+
+/* When the screen is large/full-size (e.g., height is 700px or more), lock it to the screen so it has zero overflow */
+@media (min-height: 700px) {
+  .container {
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden; /* Locks the outer page so no scrollbars appear */
+  }
 }
 
 .header {
@@ -104,6 +113,20 @@ body {
   padding: 14px;
   border-radius: 12px;
   position: relative;
+  animation: slideInFromLeft 1s ease-out;
+}
+
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(
+      -100%
+    ); /* Starts completely hidden above its container */
+    opacity: 0; /* Optional: Fades in simultaneously */
+  }
+  to {
+    transform: translateX(0); /* Settles into its normal position */
+    opacity: 1;
+  }
 }
 
 .wallet-header {
@@ -254,7 +277,7 @@ body {
 }
 
 .table-scroll {
-  flex: 1;
+  flex-grow: 1;
   overflow-y: auto;
   overflow-x: hidden;
   margin-top: 8px;
@@ -278,8 +301,21 @@ body {
   align-items: center;
   padding: 8px 16px; /* Matches header padding for alignment */
   border-bottom: 1px solid #121418;
+  animation: slideInFromTop 1.2s ease-out; /* 👈 Replaced the placeholder with real values */
 }
 
+@keyframes slideInFromTop {
+  from {
+    transform: translateY(
+      -100%
+    ); /* Starts completely hidden above its container */
+    opacity: 0; /* Optional: Fades in simultaneously */
+  }
+  to {
+    transform: translateY(0); /* Settles into its normal position */
+    opacity: 1;
+  }
+}
 /* Force every cell in the row to take up the exact same width as the header above it */
 .table-row-item div {
   flex: 1;
@@ -321,8 +357,9 @@ body {
 }
 
 /* Styling the dialog box card */
+/* 1. Base styling for the dialog */
 dialog.dialog-box {
-  background-color: #1e293b; /* Dark slate background matching your dashboard */
+  background-color: #1e293b;
   color: #ffffff;
   padding: 24px;
   border-radius: 12px;
@@ -330,26 +367,106 @@ dialog.dialog-box {
   width: 90%;
   max-width: 400px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+
+  /* Animation Entry/Exit States */
+  opacity: 0;
+  transform: scale(0.95) translateY(-20px);
+  transition:
+    opacity 400ms ease,
+    transform 400ms ease,
+    overlay 400ms allow-discrete,
+    display 400ms allow-discrete;
 }
 
-dialog.dialog-box2 {
-  background-color: #1e293b; /* Dark slate background matching your dashboard */
-  color: #ffffff;
-  padding: 24px;
-  border-radius: 12px;
-  border: none;
-  width: 90%;
-  max-width: 400px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+/* 2. When the dialog is OPEN (Final state) */
+dialog.dialog-box[open] {
+  opacity: 1;
+  transform: scale(1) translateY(0);
 }
 
-/* Makes the outside/background much darker */
+/* 3. The starting state right before it pops open */
+@starting-style {
+  dialog.dialog-box[open] {
+    opacity: 0;
+    transform: scale(0.95) translateY(-20px);
+  }
+}
+
+/* 4. Backdrop styling & its transition */
 dialog.dialog-box::backdrop {
-  background: rgba(0, 0, 0, 0.85); /* 85% opacity dark overlay */
+  background: rgba(0, 0, 0, 0); /* Starts fully transparent */
+  transition:
+    background 400ms ease,
+    overlay 400ms allow-discrete,
+    display 400ms allow-discrete;
 }
 
+/* Backdrop when the dialog is open */
+dialog.dialog-box[open]::backdrop {
+  background: rgba(0, 0, 0, 0.85); /* Fades into your 85% dark overlay */
+}
+
+/* Backdrop starting style */
+@starting-style {
+  dialog.dialog-box[open]::backdrop {
+    background: rgba(0, 0, 0, 0);
+  }
+}
+
+/* 1. Base styling for the dialog */
+dialog.dialog-box2 {
+  background-color: #1e293b;
+  color: #ffffff;
+  padding: 24px;
+  border-radius: 12px;
+  border: none;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+
+  /* Animation Entry/Exit States */
+  opacity: 0;
+  transform: scale(0.95) translateY(-20px);
+  transition:
+    opacity 400ms ease,
+    transform 400ms ease,
+    overlay 400ms allow-discrete,
+    display 400ms allow-discrete;
+}
+
+/* 2. When the dialog is OPEN (Final state) */
+dialog.dialog-box2[open] {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+/* 3. The starting state right before it pops open */
+@starting-style {
+  dialog.dialog-box2[open] {
+    opacity: 0;
+    transform: scale(0.95) translateY(-20px);
+  }
+}
+
+/* 4. Backdrop styling & its transition */
 dialog.dialog-box2::backdrop {
-  background: rgba(0, 0, 0, 0.85); /* 85% opacity dark overlay */
+  background: rgba(0, 0, 0, 0); /* Starts fully transparent */
+  transition:
+    background 400ms ease,
+    overlay 400ms allow-discrete,
+    display 400ms allow-discrete;
+}
+
+/* Backdrop when the dialog is open */
+dialog.dialog-box2[open]::backdrop {
+  background: rgba(0, 0, 0, 0.85); /* Fades into your 85% dark overlay */
+}
+
+/* Backdrop starting style */
+@starting-style {
+  dialog.dialog-box2[open]::backdrop {
+    background: rgba(0, 0, 0, 0);
+  }
 }
 
 /* Typography spacing */

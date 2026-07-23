@@ -30,13 +30,15 @@ async function fetchAndRenderMainPage() {
 
       link.addEventListener("click", (e) => {
         // Check if the pin/password property is NOT equal to "'" (meaning it's locked/protected)
-        if (wallet.password !== "'") {
+        if (wallet.password !== "") {
           e.preventDefault(); // Stop normal navigation
 
           const dialog = document.getElementById("access-dialog");
           dialog.dataset.link = `wallets.html?id=${wallet.id}`;
           dialog.dataset.password = wallet.password;
 
+          document.getElementById("access-title").innerHTML =
+            `"${wallet.name}" Wallet Is Locked! <i class="fa-solid fa-lock"></i>`;
           dialog.showModal();
         } else {
           // If it equals "'", do nothing extra and let it navigate normally to wallets.html?id=${wallet.id}
@@ -45,8 +47,7 @@ async function fetchAndRenderMainPage() {
 
       // Set the data using textContent
       clone.querySelector(".name").textContent = wallet.name;
-      clone.querySelector(".balance").textContent =
-        `RM ${wallet.balance.toFixed(2)}`;
+      clone.querySelector(".balance").textContent = `RM ${wallet.balance}`;
 
       // --- RENAME ACTION ---
       const renameLink = clone.querySelector(".rename-link");
@@ -78,19 +79,135 @@ async function fetchAndRenderMainPage() {
         dialog.showModal();
       });
 
-      // --- LOCK ACTION ---
+      // --- LOCK / UNLOCK ACTION ---
       const lockLink = clone.querySelector(".lock-link");
+
+      if (wallet.password !== "") {
+        lockLink.innerHTML = '<i class="fa-solid fa-unlock"></i> Unlock';
+      } else {
+        lockLink.innerHTML = '<i class="fa-solid fa-lock"></i> Lock';
+      }
+
       lockLink.addEventListener("click", (e) => {
         e.preventDefault();
         const dialog = document.getElementById("password-dialog");
         const title = document.getElementById("password-dialog-title");
+        const saveButton = document.getElementById("btn-save");
 
         dialog.dataset.walletId = wallet.id;
         dialog.dataset.walletName = wallet.name;
+        dialog.dataset.password = wallet.password;
 
-        title.textContent = `Lock "${wallet.name}" Wallet`;
+        if (wallet.password !== "") {
+          title.textContent = `Unlock "${wallet.name}" Wallet`;
+          if (saveButton)
+            saveButton.innerHTML =
+              '<i class="fa-solid fa-unlock"></i> Unlock Wallet';
+        } else {
+          title.textContent = `Lock "${wallet.name}" Wallet`;
+          if (saveButton)
+            saveButton.innerHTML =
+              '<i class="fa-solid fa-lock"></i> Lock Wallet';
+        }
 
         dialog.showModal();
+      });
+
+      // --- CENSOR ACTION ---
+      const censorLink = clone.querySelector(".censor-link");
+
+      if (wallet.censor == false) {
+        censorLink.innerHTML = '<i class="fa-solid fa-asterisk"></i> Censor';
+      } else {
+        censorLink.innerHTML =
+          '<i class="fa-solid fa-dollar-sign"></i> Uncensor';
+      }
+
+      censorLink.addEventListener("click", async (e) => {
+        // 1. Added 'async'
+        e.preventDefault();
+
+        try {
+          const response = await fetch(
+            `http://127.0.0.1:8000/api/censor/${wallet.id}`, // 2. Used wallet.id directly from your loop
+            {
+              method: "POST",
+            },
+          );
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            alert(`Error: ${errorData.detail}`);
+            return;
+          }
+
+          location.reload();
+        } catch (error) {
+          console.error("Error updating wallet:", error);
+          alert("An error occurred while saving. Please try again.");
+        }
+      });
+
+      // --- HIDE ACTION ---
+      const hideLink = clone.querySelector(".hide-link");
+
+      hideLink.addEventListener("click", async (e) => {
+        // 1. Added 'async'
+        e.preventDefault();
+
+        try {
+          const response = await fetch(
+            `http://127.0.0.1:8000/api/hide/${wallet.id}`, // 2. Used wallet.id directly from your loop
+            {
+              method: "POST",
+            },
+          );
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            alert(`Error: ${errorData.detail}`);
+            return;
+          }
+
+          location.reload();
+        } catch (error) {
+          console.error("Error updating wallet:", error);
+          alert("An error occurred while saving. Please try again.");
+        }
+      });
+
+      // --- PIN ACTION ---
+      const pinLink = clone.querySelector(".pin-link");
+
+      if (wallet.pin == false) {
+        pinLink.innerHTML = '<i class="fa-solid fa-thumbtack"></i> Pin';
+      } else {
+        pinLink.innerHTML = '<i class="fa-solid fa-arrow-down"></i> Unpin';
+      }
+
+      pinLink.addEventListener("click", async (e) => {
+        // 1. Added 'async'
+        e.preventDefault();
+
+        try {
+          const response = await fetch(
+            `http://127.0.0.1:8000/api/pin/${wallet.id}`, // 2. Used wallet.id directly from your loop
+            {
+              method: "POST",
+            },
+          );
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            alert(`Error: ${errorData.detail}`);
+            return;
+          }
+
+          location.reload();
+        } catch (error) {
+          console.error("Error updating wallet:", error);
+          alert("An error occurred while saving. Please try again.");
+        }
       });
 
       // Append the card (NOT the grid) to the grid container
@@ -149,7 +266,10 @@ async function fetchAndRenderMainPage() {
         ],
       },
       options: {
-        responsive: true,
+        responsive: false,
+        animation: {
+          duration: 1500,
+        },
         maintainAspectRatio: true,
         plugins: {
           legend: {
@@ -250,7 +370,7 @@ renameForm.addEventListener("submit", async (event) => {
     // 1. Check if the response failed (e.g., status 400 or 404)
     if (!response.ok) {
       const errorData = await response.json(); // Parses {"detail": "..."}
-      renameWarningText = `<i class="fa-solid fa-triangle-exclamation"></i> ${errorData.detail}`;
+      renameWarningText.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${errorData.detail}`;
       newNameInput.value = "";
       return;
     }
@@ -304,6 +424,32 @@ const inputPassword = document.getElementById("access-wallet");
 const accessWarningText = document.getElementById("access-warning-text");
 const accessForm = document.getElementById("access-form");
 
+inputPassword.addEventListener("input", () => {
+  const password = inputPassword.value.trim();
+
+  // 1. If empty, clear text and reset style
+  if (password.length === 0) {
+    accessWarningText.innerHTML = "";
+    accessWarningText.style.color = ""; // Resets back to your default CSS color (red)
+    return;
+  }
+
+  // 2. If too short (< 8 characters)
+  if (password.length < 8) {
+    accessWarningText.innerHTML =
+      '<i class="fa-solid fa-circle-xmark"></i> Invalid Password';
+    accessWarningText.style.color = ""; // Uses default CSS red
+    return;
+  }
+
+  // 3. If valid (>= 8 characters)
+  if (password.length >= 8) {
+    accessWarningText.innerHTML =
+      '<i class="fa-solid fa-circle-check"></i> Valid Password';
+    accessWarningText.style.color = "#10b981"; // Changes text color to green (Tailwind emerald-500)
+  }
+});
+
 accessForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -322,6 +468,7 @@ accessForm.addEventListener("submit", async (event) => {
   // 2. Check if password matches
   if (enteredValue === actualPassword) {
     accessWarningText.innerHTML = "";
+    accessWarningText.style.color = "";
     inputPassword.value = "";
     accessDialog.close();
 
@@ -329,7 +476,162 @@ accessForm.addEventListener("submit", async (event) => {
   } else {
     accessWarningText.innerHTML =
       '<i class="fa-solid fa-triangle-exclamation"></i> Incorrect password. Please try again.';
+    accessWarningText.style.color = "";
     inputPassword.value = "";
     return;
   }
+});
+
+// ====================== Lock Function ======================//
+const passwordForm = document.getElementById("password-form");
+const lockWarningText = document.getElementById("lock-warning-text");
+const passwordDialog = document.getElementById("password-dialog");
+const passwordInput = document.getElementById("password");
+
+passwordInput.addEventListener("input", () => {
+  const password = passwordInput.value.trim();
+
+  // 1. If empty, clear text and reset style
+  if (password.length === 0) {
+    lockWarningText.innerHTML = "";
+    lockWarningText.style.color = "";
+    return;
+  }
+
+  // 2. If too short (< 8 characters)
+  if (password.length < 8) {
+    lockWarningText.innerHTML =
+      '<i class="fa-solid fa-circle-xmark"></i> Invalid Password';
+    lockWarningText.style.color = "";
+    return;
+  }
+
+  // 3. If valid (>= 8 characters)
+  if (password.length >= 8) {
+    lockWarningText.innerHTML =
+      '<i class="fa-solid fa-circle-check"></i> Valid Password';
+    lockWarningText.style.color = "#10b981";
+  }
+});
+
+passwordForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const walletId = passwordDialog.dataset.walletId;
+  const currentPasswordOnWallet = passwordDialog.dataset.password; // "" if unlocked, or active password if locked
+  const password = passwordInput.value.trim();
+
+  // 1. If the wallet is locked, verify the password matches first
+  if (currentPasswordOnWallet !== "") {
+    if (password.length < 8) {
+      lockWarningText.style.color = "";
+      lockWarningText.innerHTML =
+        '<i class="fa-solid fa-triangle-exclamation"></i> Passwords must contain a minimum of 8 characters.';
+      passwordInput.value = "";
+      return;
+    }
+    if (password !== currentPasswordOnWallet) {
+      lockWarningText.style.color = "";
+      lockWarningText.innerHTML =
+        '<i class="fa-solid fa-triangle-exclamation"></i> Incorrect Password. Please try again.';
+      passwordInput.value = "";
+      return;
+    }
+  } else {
+    // 2. If the wallet is unlocked (we are locking it), enforce the 8-character minimum
+    if (password.length < 8) {
+      lockWarningText.style.color = "";
+      lockWarningText.innerHTML =
+        '<i class="fa-solid fa-triangle-exclamation"></i> Passwords must contain a minimum of 8 characters.';
+      passwordInput.value = "";
+      return;
+    }
+  }
+
+  // 3. Send the request to the backend once all checks pass
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/api/lock-wallet`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        walletId: walletId,
+        password: password,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      lockWarningText.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${errorData.detail}`;
+      passwordInput.value = "";
+      return;
+    }
+
+    // 4. Cleanup and reload page on success
+    lockWarningText.innerHTML = "";
+    passwordInput.value = "";
+    passwordDialog.close();
+    location.reload();
+  } catch (error) {
+    console.error("Error updating wallet lock status:", error);
+    lockWarningText.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> An error occurred. Please try again.';
+  }
+});
+
+// ====================== Create Function ======================//
+const createForm = document.getElementById("create-form");
+const createDialog = document.getElementById("create-dialog");
+const newWalletInput = document.getElementById("new-wallet");
+const createWarningText = document.getElementById("create-warning-text");
+
+// Make the submit event listener async so we can use await
+createForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  // 1. Grab the value from input
+  const walletName = newWalletInput.value
+    .trim() // Remove spaces from the very beginning and end
+    .replace(/\s+/g, " ") // Replace multiple consecutive spaces in between words with a single space
+    .toLowerCase() // Convert everything to lowercase first
+    .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize the first letter of every word
+
+  // 2. RUN YOUR JS PROCESSING / VALIDATION
+  if (walletName === "") {
+    createWarningText.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Name cannot be empty.';
+    return;
+  }
+
+  // 3. POST TO BACKEND (via fetch)
+  try {
+    const response = await fetch(
+      `http://127.0.0.1:8000/api/create-wallet/${walletName}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    // 1. Check if the response failed (e.g., status 400 or 404)
+    if (!response.ok) {
+      const errorData = await response.json(); // Parses {"detail": "..."}
+      createWarningText.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${errorData.detail}`;
+      newWalletInput.value = "";
+      return;
+    }
+  } catch (error) {
+    console.error("Error updating wallet:", error);
+    event.preventDefault(); // Stop dialog from closing if backend save failed
+    alert("An error occurred while saving. Please try again.");
+    return;
+  }
+
+  // 4. Clean up the input field for next time
+  newWalletInput.value = "";
+  createWarningText.innerHTML = "";
+  createDialog.close();
+  location.reload();
 });

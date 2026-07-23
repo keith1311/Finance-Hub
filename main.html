@@ -72,9 +72,15 @@
                   <a href="#" class="lock-link">
                     <i class="fa-solid fa-lock"></i> Lock
                   </a>
-                  <a> <i class="fa-solid fa-asterisk"></i> Censor</a>
-                  <a> <i class="fa-solid fa-eye-slash"></i> Hide</a>
-                  <a> <i class="fa-solid fa-thumbtack"></i> Pin</a>
+                  <a href="#" class="censor-link">
+                    <i class="fa-solid fa-asterisk"></i> Censor</a
+                  >
+                  <a href="#" class="hide-link">
+                    <i class="fa-solid fa-eye-slash"></i> Hide</a
+                  >
+                  <a href="#" class="pin-link">
+                    <i class="fa-solid fa-thumbtack"></i> Pin</a
+                  >
                 </div>
               </div>
               <a href="" class="view-btn">
@@ -116,7 +122,7 @@
       </div>
     </div>
 
-    //====================== Rename Dialog ======================//
+    <!-- ====================== Rename Dialog ====================== -->
     <dialog class="dialog-box" id="rename-dialog">
       <form id="rename-form" method="dialog">
         <h3 id="rename-dialog-title">Rename Wallet</h3>
@@ -136,6 +142,7 @@
           <button
             onclick="
               document.getElementById('new-name').value = '';
+              document.getElementById('rename-warning-text').innerHTML = '';
               document.getElementById('rename-dialog').close();
             "
             class="btn-cancel"
@@ -150,7 +157,7 @@
       </form>
     </dialog>
 
-    //====================== Delete1 Dialog ======================//
+    <!-- ====================== Delete Dialog 1 ====================== -->
     <dialog class="dialog-box" id="delete-dialog">
       <h3 id="delete-dialog-title">Delete Wallet</h3>
       <p>This will permanently delete all data related to the wallet.</p>
@@ -177,7 +184,7 @@
       </div>
     </dialog>
 
-    //====================== Delete2 Dialog ======================//
+    <!-- ====================== Delete Dialog 2 ====================== -->
     <dialog class="dialog-box2" id="delete-dialog2">
       <h3>Are you sure?</h3>
       <p style="color: #e74c3c">This action cannot be undone.</p>
@@ -197,7 +204,7 @@
       </div>
     </dialog>
 
-    //====================== Lock Dialog ======================//
+    <!-- ====================== Lock Dialog ====================== -->
     <dialog class="dialog-box" id="password-dialog">
       <form id="password-form" method="dialog">
         <h3 id="password-dialog-title">Lock Wallet</h3>
@@ -218,6 +225,7 @@
           <button
             onclick="
               document.getElementById('password').value = '';
+              document.getElementById('lock-warning-text').innerHTML = '';
               document.getElementById('password-dialog').close();
             "
             class="btn-cancel"
@@ -226,14 +234,12 @@
             <i class="fa-solid fa-xmark"></i> Cancel
           </button>
           <!-- Fixed 'typr' to 'type' -->
-          <button class="btn-save" type="submit">
-            <i class="fa-solid fa-lock"></i> Lock Wallet
-          </button>
+          <button class="btn-save" type="submit" id="btn-save"></button>
         </div>
       </form>
     </dialog>
 
-    //====================== Create Dialog ======================//
+    <!-- ====================== Create Dialog ====================== -->
     <dialog class="dialog-box" id="create-dialog">
       <form id="create-form" method="dialog">
         <h3>Create Wallet</h3>
@@ -253,6 +259,7 @@
           <button
             onclick="
               document.getElementById('new-wallet').value = '';
+              document.getElementById('create-warning-text').innerHTML = '';
               document.getElementById('create-dialog').close();
             "
             class="btn-cancel"
@@ -266,13 +273,14 @@
         </div>
       </form>
     </dialog>
-    //====================== Access Dialog ======================//
+
+    <!-- ====================== Access Dialog ====================== -->
     <dialog class="dialog-box" id="access-dialog">
       <form id="access-form" method="dialog">
-        <h3>This Wallet Is Locked! <i class="fa-solid fa-lock"></i></h3>
+        <h3 id="access-title"></h3>
 
         <div class="input-group">
-          <label for="access-wallet">Verify Your Identify</label>
+          <label for="access-wallet">Verify Your Identity</label>
           <input
             type="password"
             id="access-wallet"
@@ -287,6 +295,7 @@
           <button
             onclick="
               document.getElementById('access-wallet').value = '';
+              document.getElementById('access-warning-text').innerHTML = '';
               document.getElementById('access-dialog').close();
             "
             class="btn-cancel"
