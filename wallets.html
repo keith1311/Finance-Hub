@@ -24,14 +24,14 @@
 
       <div class="workspace">
         <div class="left">
-          <div class="section-title">MONTHLY EXPENSE ANALYSIS</div>
+          <div class="section-title">MONTHLY ANALYSIS CHART</div>
           <div class="upper-left">
             <div class="analysis-card">
               <div class="analysis-header">
-                Expense trend & category breakdown
+                Expense & Income analysis breakdown
               </div>
               <div class="analysis-chart">
-                <canvas id="expense-chart"></canvas>
+                <canvas id="analysis-chart"></canvas>
               </div>
             </div>
             <div class="buttons">
@@ -61,6 +61,7 @@
               <div>Tags</div>
               <div>Category</div>
               <div>Amount</div>
+              <div>Balance</div>
             </div>
             <div style="height: 1px; background: #222633; margin: 6px 0"></div>
             <div class="table-scroll">
@@ -78,7 +79,8 @@
               <canvas id="expenseChart"></canvas>
             </div>
             <div class="monthly-total">
-              Monthly Total: <span style="font-size: 18px">RM0.00</span>
+              Monthly Total:
+              <span style="font-size: 18px" id="monthly-total">RM0.00</span>
             </div>
           </div>
         </div>

@@ -41,6 +41,7 @@ class Transactions(Base):
     category = Column(String)
     amount = Column(Float)
     wallet_id = Column(UUID(as_uuid=True), ForeignKey("wallets.id"))
+    balance_after = Column(Float)
 
     wallet = relationship("Wallet", back_populates="transactions")
 

@@ -46,7 +46,13 @@ async function fetchAndRenderMainPage() {
       });
 
       // Set the data using textContent
-      clone.querySelector(".name").textContent = wallet.name;
+      if (wallet.pin === false) {
+        clone.querySelector(".name").textContent = wallet.name;
+      } else if (wallet.pin === true) {
+        clone.querySelector(".name").innerHTML =
+          `${wallet.name} <i class="fa-solid fa-thumbtack"></i>`;
+      }
+
       clone.querySelector(".balance").textContent = `RM ${wallet.balance}`;
 
       // --- RENAME ACTION ---
@@ -252,19 +258,24 @@ async function fetchAndRenderMainPage() {
     }
 
     const myChart = new Chart(ctx, {
-      type: "pie",
+      type: "doughnut",
       data: {
         labels: canvasData.labels,
         datasets: [
           {
             data: canvasData.data,
             backgroundColor: [
-              "#3b82f6",
-              "#10b981",
-              "#f59e0b",
-              "#ef4444",
-              "#8b5cf6",
-              "#ec4899",
+              "#3b82f6", // Blue (Groceries)
+              "#10b981", // Emerald (Income)
+              "#f59e0b", // Amber (Healthcare)
+              "#ef4444", // Red (Bills)
+              "#8b5cf6", // Violet (Food & Dining)
+              "#ec4899", // Pink (Entertainment)
+              "#06b6d4", // Cyan (Transport)
+              "#f97316", // Orange
+              "#d946ef", // Fuchsia
+              "#64748b", // Slate Gray
+              "#eab308", // Yellow
             ],
             borderWidth: 0,
           },

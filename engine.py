@@ -5,6 +5,7 @@ from tables import Transactions, Wallet
 from datetime import datetime
 from sqlalchemy import func, extract
 from pydantic import BaseModel
+import calendar
 
 
 app = FastAPI()
@@ -81,8 +82,18 @@ def render_main_page():
         )
 
     # Fetch Canvas Data
+
+    # Get current year and month numbers
+    current_year = datetime.now().year
+    current_month = datetime.now().month
+
     raw_canvas_data = (
         db.query(Transactions.category, func.sum(Transactions.amount).label("total"))
+        .filter(
+            Transactions.category != "Income",
+            extract("year", Transactions.date) == current_year,
+            extract("month", Transactions.date) == current_month,
+        )
         .group_by(Transactions.category)
         .all()
     )
@@ -93,14 +104,10 @@ def render_main_page():
     }
 
     # Fetch Monthly Total
-    # Get current year and month numbers
-    current_year = datetime.now().year
-    current_month = datetime.now().month
-
-    # Fetch Monthly Total
     monthly_total = (
         db.query(func.sum(Transactions.amount))
         .filter(
+            Transactions.category != "Income",
             extract("year", Transactions.date) == current_year,
             extract("month", Transactions.date) == current_month,
         )
@@ -126,18 +133,56 @@ def render_wallet_page(wallet_id: str):
         wallet.last_used = datetime.now()  # Update last_used timestamp
         db.commit()
 
-        # Get Wallet Name And Balance (Fixed class attribute syntax error)
+        # Get Wallet Name And Balance
         wallet_data = {
             "name": wallet.name,
             "balance": float(wallet.balance) if wallet.balance is not None else 0.0,
         }
+
+        # Fetch transaction data
+        raw_transaction_data = (
+            db.query(Transactions)
+            .filter(Transactions.wallet_id == wallet_id)
+            .with_entities(
+                Transactions.date,
+                Transactions.tags,
+                Transactions.category,
+                Transactions.amount,
+                Transactions.balance_after,
+            )
+            .order_by(Transactions.date.desc())
+            .all()
+        )
+
+        # Refined list comprehension with safety checks
+        transaction_data = [
+            {
+                "date": tx.date.strftime("%Y-%m-%d") if tx.date else None,
+                "tags": tx.tags,
+                "category": tx.category,
+                "amount": float(tx.amount) if tx.amount is not None else 0.0,
+                "balance": float(tx.balance_after)
+                if tx.balance_after is not None
+                else 0.0,
+            }
+            for tx in raw_transaction_data
+        ]
+
+        # Get current year and month numbers
+        current_year = datetime.now().year
+        current_month = datetime.now().month
 
         # Fetch Canvas Data filtered by wallet_id
         raw_canvas_data = (
             db.query(
                 Transactions.category, func.sum(Transactions.amount).label("total")
             )
-            .filter(Transactions.wallet_id == wallet_id)
+            .filter(
+                Transactions.wallet_id == wallet_id,
+                Transactions.category != "Income",
+                extract("year", Transactions.date) == current_year,
+                extract("month", Transactions.date) == current_month,
+            )
             .group_by(Transactions.category)
             .all()
         )
@@ -155,33 +200,89 @@ def render_wallet_page(wallet_id: str):
             else [],
         }
 
-        # Fetch transaction data
-        raw_transaction_data = (
-            db.query(Transactions)
-            .filter(Transactions.wallet_id == wallet_id)
-            .with_entities(
-                Transactions.date,
-                Transactions.tags,
-                Transactions.category,
-                Transactions.amount,
+        # Fetch Monthly Total
+        monthly_total = (
+            db.query(func.sum(Transactions.amount))
+            .filter(
+                Transactions.wallet_id == wallet_id,
+                Transactions.category != "Income",
+                extract("year", Transactions.date) == current_year,
+                extract("month", Transactions.date) == current_month,
             )
-            .order_by(Transactions.date.desc())
+            .scalar()
+        ) or 0.0
+
+        # Fetch Line Chart Data
+        # 1. Fetch Raw Expense Data (Non-Income categories)
+        raw_expense_data = (
+            db.query(
+                extract("month", Transactions.date).label("month"),
+                func.sum(Transactions.amount).label("total"),
+            )
+            .filter(
+                Transactions.wallet_id == wallet_id,
+                Transactions.category != "Income",
+                extract("year", Transactions.date) == current_year,
+            )
+            .group_by(extract("month", Transactions.date))
+            .order_by(extract("month", Transactions.date))
             .all()
         )
 
-        # Refined list comprehension with safety checks
-        transaction_data = [
-            {
-                "date": tx.date.strftime("%Y-%m-%d") if tx.date else None,
-                "tags": tx.tags,
-                "category": tx.category,
-                "amount": float(tx.amount) if tx.amount is not None else 0.0,
-            }
-            for tx in raw_transaction_data
-        ]
+        # 2. Fetch Raw Income Data (Income category only)
+        raw_income_data = (
+            db.query(
+                extract("month", Transactions.date).label("month"),
+                func.sum(Transactions.amount).label("total"),
+            )
+            .filter(
+                Transactions.wallet_id == wallet_id,
+                Transactions.category == "Income",
+                extract("year", Transactions.date) == current_year,
+            )
+            .group_by(extract("month", Transactions.date))
+            .order_by(extract("month", Transactions.date))
+            .all()
+        )
 
-        # Return a unified dictionary response containing everything
-        return {wallet_data, canvas_data, transaction_data}
+        # 3. Convert query results into dictionaries for quick month lookup
+        expense_dict = {int(row.month): float(row.total) for row in raw_expense_data}
+        income_dict = {int(row.month): float(row.total) for row in raw_income_data}
+
+        # 4. Force all 12 months (1 through 12) to ensure every month is always shown
+        all_months = list(range(1, 13))
+        month_labels = [calendar.month_name[m] for m in all_months]
+
+        # 5. Build Expense Data Set
+        expense_data = {
+            "labels": month_labels,
+            "data": [expense_dict.get(m, 0.0) for m in all_months],
+        }
+
+        # 6. Build Income Data Set
+        income_data = {
+            "labels": month_labels,
+            "data": [income_dict.get(m, 0.0) for m in all_months],
+        }
+
+        # 7. Build Savings Data Set (Income minus Expense per month)
+        savings_data = {
+            "labels": month_labels,
+            "data": [
+                round(income_dict.get(m, 0.0) - expense_dict.get(m, 0.0), 2)
+                for m in all_months
+            ],
+        }
+        # Return a unified list response containing everything
+        return [
+            wallet_data,
+            canvas_data,
+            transaction_data,
+            monthly_total,
+            expense_data,
+            income_data,
+            savings_data,
+        ]
 
     finally:
         db.close()
@@ -337,9 +438,6 @@ def create_wallet(wallet_name: str):
         db.close()
 
 
-from fastapi import HTTPException
-
-
 @app.post("/api/{function}/{wallet_id}")
 def toggle(function: str, wallet_id: str):
     db = SessionLocal()
@@ -358,6 +456,7 @@ def toggle(function: str, wallet_id: str):
         else:
             raise HTTPException(status_code=400, detail="Invalid action function")
 
+        target_wallet.last_used = datetime.now()
         db.commit()
         return {"success": True, "message": f"Successfully toggled {function}"}
 
