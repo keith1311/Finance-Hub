@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from database import SessionLocal
 from tables import Transactions, Wallet
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from sqlalchemy import func, extract
 from pydantic import BaseModel
 import calendar
@@ -17,6 +17,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+from datetime import datetime, timedelta
 
 
 @app.get("/api/render_main_page")
@@ -82,41 +85,111 @@ def render_main_page():
         )
 
     # Fetch Canvas Data
+    current_day = date.today()
+    current_year = current_day.year
+    current_month = current_day.month
 
-    # Get current year and month numbers
-    current_year = datetime.now().year
-    current_month = datetime.now().month
+    # Find the start of the week (Monday)
+    start_of_week = current_day - timedelta(days=current_day.weekday())
+    end_of_week = start_of_week + timedelta(days=6)
 
-    raw_canvas_data = (
-        db.query(Transactions.category, func.sum(Transactions.amount).label("total"))
-        .filter(
-            Transactions.category != "Income",
-            extract("year", Transactions.date) == current_year,
-            extract("month", Transactions.date) == current_month,
+    # Get Metrics Index (Hardcoded to 2 for now, but you can pass this via query params later)
+    current_index = 2
+
+    if current_index == 0:
+        raw_canvas_data = (
+            db.query(
+                Transactions.category, func.sum(Transactions.amount).label("total")
+            )
+            .filter(
+                Transactions.category != "Income",
+                Transactions.date == current_day,
+            )
+            .group_by(Transactions.category)
+            .all()
         )
-        .group_by(Transactions.category)
-        .all()
-    )
+        metrics_total = (
+            db.query(func.sum(Transactions.amount))
+            .filter(
+                Transactions.category != "Income",
+                Transactions.date == current_day,
+            )
+            .scalar()
+        ) or 0.0
+
+    elif current_index == 1:
+        raw_canvas_data = (
+            db.query(
+                Transactions.category, func.sum(Transactions.amount).label("total")
+            )
+            .filter(
+                Transactions.category != "Income",
+                Transactions.date.between(start_of_week, end_of_week),
+            )
+            .group_by(Transactions.category)
+            .all()
+        )
+        metrics_total = (
+            db.query(func.sum(Transactions.amount))
+            .filter(
+                Transactions.category != "Income",
+                Transactions.date.between(start_of_week, end_of_week),
+            )
+            .scalar()
+        ) or 0.0
+
+    elif current_index == 2:
+        raw_canvas_data = (
+            db.query(
+                Transactions.category, func.sum(Transactions.amount).label("total")
+            )
+            .filter(
+                Transactions.category != "Income",
+                extract("year", Transactions.date) == current_year,
+                extract("month", Transactions.date) == current_month,
+            )
+            .group_by(Transactions.category)
+            .all()
+        )
+        metrics_total = (
+            db.query(func.sum(Transactions.amount))
+            .filter(
+                Transactions.category != "Income",
+                extract("year", Transactions.date) == current_year,
+                extract("month", Transactions.date) == current_month,
+            )
+            .scalar()
+        ) or 0.0
+
+    elif current_index == 3:
+        raw_canvas_data = (
+            db.query(
+                Transactions.category, func.sum(Transactions.amount).label("total")
+            )
+            .filter(
+                Transactions.category != "Income",
+                extract("year", Transactions.date) == current_year,
+            )
+            .group_by(Transactions.category)
+            .all()
+        )
+        metrics_total = (
+            db.query(func.sum(Transactions.amount))
+            .filter(
+                Transactions.category != "Income",
+                extract("year", Transactions.date) == current_year,
+            )
+            .scalar()
+        ) or 0.0
 
     canvas_data = {
         "labels": [row.category for row in raw_canvas_data],
         "data": [float(row.total) for row in raw_canvas_data],
     }
 
-    # Fetch Monthly Total
-    monthly_total = (
-        db.query(func.sum(Transactions.amount))
-        .filter(
-            Transactions.category != "Income",
-            extract("year", Transactions.date) == current_year,
-            extract("month", Transactions.date) == current_month,
-        )
-        .scalar()
-    ) or 0.0
-
     db.close()
 
-    return rendered_wallets, total_balance, transaction_data, canvas_data, monthly_total
+    return rendered_wallets, total_balance, transaction_data, canvas_data, metrics_total
 
 
 @app.post("/api/render_wallet_page/{wallet_id}")
@@ -321,9 +394,38 @@ def rename_wallet(data: RenameWallet):
         db.commit()
         db.refresh(target_wallet)
 
-        return {"status": "No Error", "message": "Wallet renamed successfully"}
+        top_six = (
+            db.query(Wallet)
+            .filter(Wallet.hide == False)
+            .order_by(Wallet.pin.desc(), Wallet.last_used.desc())
+            .limit(6)
+            .all()
+        )
+
+        rendered_wallets = []
+        for wallet in top_six:
+            if wallet.censor == True:
+                balance = "******"
+            elif wallet.censor == False:
+                balance = f"{wallet.balance:.2f}"
+            else:
+                balance = wallet.balance
+
+            rendered_wallets.append(
+                {
+                    "id": wallet.id,
+                    "name": wallet.name,
+                    "balance": balance,
+                    "password": wallet.password,
+                    "censor": wallet.censor,
+                    "pin": wallet.pin,
+                }
+            )
+
+        return {"wallets": rendered_wallets}
+
     except HTTPException as he:
-        raise he  # Let FastAPI handle 400, 404, etc. properly without converting to 500
+        raise he  # Let FastAPI handle 400, 404, etc. properly
     except Exception as e:
         db.rollback()  # Undo changes if something unexpected fails
         raise HTTPException(status_code=500, detail=str(e))
@@ -458,7 +560,160 @@ def toggle(function: str, wallet_id: str):
 
         target_wallet.last_used = datetime.now()
         db.commit()
-        return {"success": True, "message": f"Successfully toggled {function}"}
+
+        top_six = (
+            db.query(Wallet)
+            .filter(Wallet.hide == False)
+            .order_by(Wallet.pin.desc(), Wallet.last_used.desc())
+            .limit(6)
+            .all()
+        )
+
+        rendered_wallets = []
+        for wallet in top_six:
+            if wallet.censor == True:
+                balance = "******"
+            elif wallet.censor == False:
+                balance = f"{wallet.balance:.2f}"
+            else:
+                balance = wallet.balance
+
+            rendered_wallets.append(
+                {
+                    "id": wallet.id,
+                    "name": wallet.name,
+                    "balance": balance,
+                    "password": wallet.password,
+                    "censor": wallet.censor,
+                    "pin": wallet.pin,
+                }
+            )
+
+        return {"wallets": rendered_wallets}
+
+    except HTTPException as he:
+        raise he  # Let FastAPI handle 400 properly
+
+    except Exception as e:
+        db.rollback()  # Undo changes if something unexpected fails
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        db.close()
+
+
+class Adjust_Metrics(BaseModel):
+    currentIndex: int
+
+
+@app.post("/api/adjust-metrics")
+def adjust_metrics(data: Adjust_Metrics):
+    db = SessionLocal()
+    try:
+        # Fetch Canvas Data
+        current_day = date.today()
+        current_year = current_day.year
+        current_month = current_day.month
+
+        # Find the start of the week (Monday)
+        start_of_week = current_day - timedelta(days=current_day.weekday())
+        end_of_week = start_of_week + timedelta(days=6)
+
+        # Get Metrics Index
+
+        if data.currentIndex == 0:
+            raw_canvas_data = (
+                db.query(
+                    Transactions.category, func.sum(Transactions.amount).label("total")
+                )
+                .filter(
+                    Transactions.category != "Income",
+                    Transactions.date == current_day,
+                )
+                .group_by(Transactions.category)
+                .all()
+            )
+            metrics_total = (
+                db.query(func.sum(Transactions.amount))
+                .filter(
+                    Transactions.category != "Income",
+                    Transactions.date == current_day,
+                )
+                .scalar()
+            ) or 0.0
+
+        elif data.currentIndex == 1:
+            raw_canvas_data = (
+                db.query(
+                    Transactions.category, func.sum(Transactions.amount).label("total")
+                )
+                .filter(
+                    Transactions.category != "Income",
+                    Transactions.date.between(start_of_week, end_of_week),
+                )
+                .group_by(Transactions.category)
+                .all()
+            )
+            metrics_total = (
+                db.query(func.sum(Transactions.amount))
+                .filter(
+                    Transactions.category != "Income",
+                    Transactions.date.between(start_of_week, end_of_week),
+                )
+                .scalar()
+            ) or 0.0
+
+        elif data.currentIndex == 2:
+            raw_canvas_data = (
+                db.query(
+                    Transactions.category, func.sum(Transactions.amount).label("total")
+                )
+                .filter(
+                    Transactions.category != "Income",
+                    extract("year", Transactions.date) == current_year,
+                    extract("month", Transactions.date) == current_month,
+                )
+                .group_by(Transactions.category)
+                .all()
+            )
+            metrics_total = (
+                db.query(func.sum(Transactions.amount))
+                .filter(
+                    Transactions.category != "Income",
+                    extract("year", Transactions.date) == current_year,
+                    extract("month", Transactions.date) == current_month,
+                )
+                .scalar()
+            ) or 0.0
+
+        elif data.currentIndex == 3:
+            raw_canvas_data = (
+                db.query(
+                    Transactions.category, func.sum(Transactions.amount).label("total")
+                )
+                .filter(
+                    Transactions.category != "Income",
+                    extract("year", Transactions.date) == current_year,
+                )
+                .group_by(Transactions.category)
+                .all()
+            )
+            metrics_total = (
+                db.query(func.sum(Transactions.amount))
+                .filter(
+                    Transactions.category != "Income",
+                    extract("year", Transactions.date) == current_year,
+                )
+                .scalar()
+            ) or 0.0
+        else:
+            raise HTTPException(status_code=400, detail="Invalid index")
+
+        canvas_data = {
+            "labels": [row.category for row in raw_canvas_data],
+            "data": [float(row.total) for row in raw_canvas_data],
+        }
+        return [canvas_data, metrics_total]
 
     except HTTPException as he:
         raise he  # Let FastAPI handle 400 properly

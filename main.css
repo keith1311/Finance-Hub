@@ -284,6 +284,7 @@ body {
   min-height: 0;
   scrollbar-color: #3a4150 #1a1d26;
   scrollbar-width: thin;
+  max-height: 500px;
 }
 
 .table_details {
@@ -329,6 +330,9 @@ body {
 }
 
 .right .card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   background: var(--card);
   border-radius: 14px;
   padding: 18px;
@@ -338,9 +342,61 @@ body {
   flex: 1;
 }
 
+.right-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 40%; /* Ensures it fills the card header properly */
+}
+
+.arrow-btn {
+  display: flex;
+  cursor: pointer;
+  font-weight: 700;
+  margin-bottom: 4px;
+  font-size: medium;
+  color: var(--text);
+  user-select: none;
+}
+
+.arrow-btn:hover {
+  opacity: 0.7;
+}
+
+/* --- Sliding View Styles --- */
+.view-container {
+  width: 120px; /* Adjust width to fit your text size nicely */
+  height: 35px;
+  overflow: hidden;
+  position: relative;
+}
+
+.view-wrapper {
+  display: flex;
+  width: 400%; /* 4 items * 100% */
+  height: 100%;
+  /* Start at -50% so the 3rd item (Monthly) is centered in the view by default */
+  transform: translateX(-50%);
+  transition: transform 0.4s ease-in-out;
+}
+
+.view-item {
+  width: 25%; /* Each item takes 1/4 of the wrapper width */
+  display: flex;
+  justify-content: center;
+  text-align: center;
+  align-items: center;
+  height: 100%;
+  font-weight: 700;
+  margin-top: -4px;
+}
+
 .chart-area {
   flex: 1;
   min-height: 220px;
+  width: 100%;
   border-radius: 8px;
   background: linear-gradient(180deg, #0c0f12, #0b0e11);
   display: flex;
@@ -349,11 +405,23 @@ body {
   color: var(--muted);
 }
 
-.monthly-total {
+.metrics-total {
   margin-top: 12px;
   text-align: center;
   font-weight: 700;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+}
+
+.metrics-amt {
+  display: flex;
+  margin-top: 12px;
+  text-align: center;
+  font-weight: 700;
+  flex-shrink: 0;
+  font-size: 18px;
+  margin-top: 1px;
 }
 
 /* Styling the dialog box card */
@@ -556,4 +624,8 @@ dialog.dialog-box h3 {
   .workspace {
     grid-template-columns: 1fr;
   }
+}
+
+.hidden {
+  display: none;
 }

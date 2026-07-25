@@ -107,15 +107,42 @@
 
         <div class="right">
           <div class="card">
-            <div style="font-weight: 700; margin-bottom: 8px">
-              MONTHLY EXPENSES
+            <div class="right-header">
+              <!-- Left Arrow Div with ID added -->
+              <div class="arrow-btn" id="prevBtn">
+                <i class="fa-solid fa-angle-left"></i>
+              </div>
+
+              <!-- The Sliding View Container -->
+              <div class="view-container">
+                <div class="view-wrapper" id="view-wrapper">
+                  <div class="view-item">Daily</div>
+                  <div class="view-item">Weekly</div>
+                  <div class="view-item">Monthly</div>
+                  <div class="view-item">Yearly</div>
+                </div>
+              </div>
+
+              <!-- Right Arrow Div with ID added -->
+              <div class="arrow-btn" id="nextBtn">
+                <i class="fa-solid fa-angle-right"></i>
+              </div>
             </div>
             <div class="chart-area" id="chart-area">
               <canvas id="expenseChart"></canvas>
             </div>
-            <div class="monthly-total">
-              Monthly Total:
-              <span style="font-size: 18px" id="monthly-total">RM0.00</span>
+
+            <div class="metrics-total" id="metrics-title">
+              <div class="view-container">
+                <div class="view-wrapper" id="view-wrapper2">
+                  <div class="view-item">Daily Total</div>
+                  <div class="view-item">Weekly Total</div>
+                  <div class="view-item">Monthly Total</div>
+                  <div class="view-item">Yearly Total</div>
+                </div>
+              </div>
+              <div style="margin-top: 1px; font-weight: 700">:&nbsp;&nbsp;</div>
+              <div class="metrics-amt" id="metrics-amt">RM0.00</div>
             </div>
           </div>
         </div>
