@@ -1,14 +1,20 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from database import SessionLocal
-from tables import Transactions, Wallet
+from tables import Transactions, Wallet, Users, Access
 from datetime import datetime, date, timedelta
 from sqlalchemy import func, extract
 from pydantic import BaseModel
 import calendar
-
+import jwt
+import os
+from dotenv import load_dotenv
+from passlib.context import CryptContext
 
 app = FastAPI()
+
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,16 +25,54 @@ app.add_middleware(
 )
 
 
-from datetime import datetime, timedelta
+# Set up the hashing context
+load_dotenv()
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = "HS256"
 
 
-@app.get("/api/render_main_page")
-def render_main_page():
+def create_access_token(data: dict):
+    encoded_jwt = jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+def verify_access_token(token: str):
+    try:
+        # Decode the token using your secret key and algorithm
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+        # Extract the user ID (or whatever data you packed into "sub")
+        user_id: str = payload.get("id")
+
+        if user_id is None:
+            raise HTTPException(
+                status_code=401, detail="Failed to validate credentials."
+            )
+
+        return user_id
+
+    except jwt.PyJWTError:
+        # Triggers if the token is tampered with, fake, or invalid
+        raise HTTPException(status_code=401, detail="Failed to validate credentials.")
+
+
+def hash_password(plain_password: str) -> str:
+    return pwd_context.hash(plain_password)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+@app.post("/api/render_main_page/{token}")
+def render_main_page(token: str):
     db = SessionLocal()
+    user_id = verify_access_token(token)
     # Fetch the top 6 wallets based on last_used timestamp
     top_six = (
         db.query(Wallet)
-        .filter(Wallet.hide == False)
+        .filter(Wallet.hide == False, Wallet.user_id == user_id)
         .order_by(Wallet.pin.desc(), Wallet.last_used.desc())
         .limit(6)
         .all()
@@ -54,13 +98,19 @@ def render_main_page():
         )
 
     # Calculate total balance across all wallets
-    all_balances = db.query(Wallet).with_entities(Wallet.balance).all()
+    all_balances = (
+        db.query(Wallet)
+        .with_entities(Wallet.balance)
+        .filter(Wallet.user_id == user_id)
+        .all()
+    )
     total_balance = sum(wallet.balance for wallet in all_balances)
 
     # Fetch transaction data
     raw_transaction_data = (
         db.query(Transactions)
         .join(Wallet, Transactions.wallet_id == Wallet.id)
+        .filter(Wallet.user_id == user_id)
         .with_entities(
             Transactions.date,
             Transactions.tags,
@@ -95,18 +145,28 @@ def render_main_page():
     end_of_week = start_of_week + timedelta(days=6)
 
     # Get Metrics Index (Hardcoded to 2 for now, but you can pass this via query params later)
-    current_index = 2
 
+    # --- 1. DAILY DATA ---
     # --- 1. DAILY DATA ---
     raw_daily_data = (
         db.query(Transactions.category, func.sum(Transactions.amount).label("total"))
-        .filter(Transactions.category != "Income", Transactions.date == current_day)
+        .join(Wallet, Transactions.wallet_id == Wallet.id)
+        .filter(
+            Wallet.user_id == user_id,
+            Transactions.category != "Income",
+            Transactions.date == current_day,
+        )
         .group_by(Transactions.category)
         .all()
     )
     daily_total = (
         db.query(func.sum(Transactions.amount))
-        .filter(Transactions.category != "Income", Transactions.date == current_day)
+        .join(Wallet, Transactions.wallet_id == Wallet.id)
+        .filter(
+            Transactions.category != "Income",
+            Transactions.date == current_day,
+            Wallet.user_id == user_id,
+        )
         .scalar()
     ) or 0.0
 
@@ -118,7 +178,9 @@ def render_main_page():
     # --- 2. WEEKLY DATA ---
     raw_weekly_data = (
         db.query(Transactions.category, func.sum(Transactions.amount).label("total"))
+        .join(Wallet, Transactions.wallet_id == Wallet.id)
         .filter(
+            Wallet.user_id == user_id,
             Transactions.category != "Income",
             Transactions.date.between(start_of_week, end_of_week),
         )
@@ -127,9 +189,11 @@ def render_main_page():
     )
     weekly_total = (
         db.query(func.sum(Transactions.amount))
+        .join(Wallet, Transactions.wallet_id == Wallet.id)
         .filter(
             Transactions.category != "Income",
             Transactions.date.between(start_of_week, end_of_week),
+            Wallet.user_id == user_id,
         )
         .scalar()
     ) or 0.0
@@ -142,7 +206,9 @@ def render_main_page():
     # --- 3. MONTHLY DATA ---
     raw_monthly_data = (
         db.query(Transactions.category, func.sum(Transactions.amount).label("total"))
+        .join(Wallet, Transactions.wallet_id == Wallet.id)
         .filter(
+            Wallet.user_id == user_id,
             Transactions.category != "Income",
             extract("year", Transactions.date) == current_year,
             extract("month", Transactions.date) == current_month,
@@ -152,7 +218,9 @@ def render_main_page():
     )
     monthly_total = (
         db.query(func.sum(Transactions.amount))
+        .join(Wallet, Transactions.wallet_id == Wallet.id)
         .filter(
+            Wallet.user_id == user_id,
             Transactions.category != "Income",
             extract("year", Transactions.date) == current_year,
             extract("month", Transactions.date) == current_month,
@@ -168,7 +236,9 @@ def render_main_page():
     # --- 4. YEARLY DATA ---
     raw_yearly_data = (
         db.query(Transactions.category, func.sum(Transactions.amount).label("total"))
+        .join(Wallet, Transactions.wallet_id == Wallet.id)
         .filter(
+            Wallet.user_id == user_id,
             Transactions.category != "Income",
             extract("year", Transactions.date) == current_year,
         )
@@ -177,7 +247,9 @@ def render_main_page():
     )
     yearly_total = (
         db.query(func.sum(Transactions.amount))
+        .join(Wallet, Transactions.wallet_id == Wallet.id)
         .filter(
+            Wallet.user_id == user_id,
             Transactions.category != "Income",
             extract("year", Transactions.date) == current_year,
         )
@@ -188,7 +260,6 @@ def render_main_page():
         "labels": [row.category for row in raw_yearly_data],
         "data": [float(row.total) for row in raw_yearly_data],
     }
-
     db.close()
 
     return (
@@ -203,7 +274,6 @@ def render_main_page():
         monthly_total,
         yearly_data,
         yearly_total,
-        current_index,
     )
 
 
@@ -263,7 +333,6 @@ def render_wallet_page(wallet_id: str):
 
         start_of_week = current_day - timedelta(days=current_day.weekday())
         end_of_week = start_of_week + timedelta(days=6)
-        current_index = 2
 
         # --- 1. DAILY DATA ---
 
@@ -388,8 +457,9 @@ def render_wallet_page(wallet_id: str):
         # ==========================================
         def calculate_comparison(current_val, previous_val):
             if previous_val == 0:
+                # Changed -100.0 to 100.0 (or absolute) so the value is never negative
                 percentage = (
-                    100.0 if current_val > 0 else (0.0 if current_val == 0 else -100.0)
+                    100.0 if current_val > 0 else (0.0 if current_val == 0 else 100.0)
                 )
                 nature = (
                     "Positive"
@@ -688,7 +758,6 @@ def render_wallet_page(wallet_id: str):
         return [
             wallet_data,
             transaction_data,
-            current_index,
             # Daily
             daily_data,
             daily_expense_data,
@@ -731,15 +800,21 @@ def render_wallet_page(wallet_id: str):
 class RenameWallet(BaseModel):
     walletId: str
     newName: str
+    token: str
 
 
 @app.post("/api/rename-wallet")
 def rename_wallet(data: RenameWallet):
     db = SessionLocal()
-
     try:
+        user_id = verify_access_token(data.token)
         # 1. Fetch all existing wallet names
-        all_wallets = db.query(Wallet).with_entities(Wallet.name).all()
+        all_wallets = (
+            db.query(Wallet)
+            .with_entities(Wallet.name)
+            .filter(Wallet.user_id == user_id)
+            .all()
+        )
         existing_names = [wallet.name for wallet in all_wallets]
 
         # 2. Check for duplicates
@@ -749,7 +824,11 @@ def rename_wallet(data: RenameWallet):
             )
 
         # 3. Find the target wallet
-        target_wallet = db.query(Wallet).filter(Wallet.id == data.walletId).first()
+        target_wallet = (
+            db.query(Wallet)
+            .filter(Wallet.id == data.walletId, Wallet.user_id == user_id)
+            .first()
+        )
         if not target_wallet:
             raise HTTPException(status_code=404, detail="Wallet not found")
 
@@ -763,7 +842,7 @@ def rename_wallet(data: RenameWallet):
 
         top_six = (
             db.query(Wallet)
-            .filter(Wallet.hide == False)
+            .filter(Wallet.hide == False, Wallet.user_id == user_id)
             .order_by(Wallet.pin.desc(), Wallet.last_used.desc())
             .limit(6)
             .all()
@@ -800,13 +879,17 @@ def rename_wallet(data: RenameWallet):
         db.close()
 
 
-@app.post("/api/delete-wallet/{wallet_id}")
-def delete_wallet(wallet_id: str):
+@app.post("/api/delete-wallet/{wallet_id}/{token}")
+def delete_wallet(wallet_id: str, token: str):
     db = SessionLocal()
     try:
+        user_id = verify_access_token(token)
         # 1. Find the wallet matching the wallet_id
-        # (Assuming your SQLAlchemy model is named `Wallet` and the primary key or column is `id`)
-        wallet = db.query(Wallet).filter(Wallet.id == wallet_id).first()
+        wallet = (
+            db.query(Wallet)
+            .filter(Wallet.id == wallet_id, Wallet.user_id == user_id)
+            .first()
+        )
 
         # 2. Check if the wallet exists
         if not wallet:
@@ -816,13 +899,40 @@ def delete_wallet(wallet_id: str):
         db.delete(wallet)
         db.commit()
 
-        return {"message": "Wallet deleted successfully"}
+        top_six = (
+            db.query(Wallet)
+            .filter(Wallet.hide == False, Wallet.user_id == user_id)
+            .order_by(Wallet.pin.desc(), Wallet.last_used.desc())
+            .limit(6)
+            .all()
+        )
+
+        rendered_wallets = []
+        for wallet in top_six:
+            if wallet.censor == True:
+                balance = "******"
+            elif wallet.censor == False:
+                balance = f"{wallet.balance:.2f}"
+            else:
+                balance = wallet.balance
+
+            rendered_wallets.append(
+                {
+                    "id": wallet.id,
+                    "name": wallet.name,
+                    "balance": balance,
+                    "password": wallet.password,
+                    "censor": wallet.censor,
+                    "pin": wallet.pin,
+                }
+            )
+
+        return {"wallets": rendered_wallets}
     except HTTPException as he:
-        raise he  # Let FastAPI handle 400, 404, etc. properly without converting to 500
+        raise he  # Let FastAPI handle 400, 404, etc. properly
     except Exception as e:
         db.rollback()  # Undo changes if something unexpected fails
         raise HTTPException(status_code=500, detail=str(e))
-
     finally:
         db.close()
 
@@ -830,19 +940,24 @@ def delete_wallet(wallet_id: str):
 class LockWallet(BaseModel):
     walletId: str
     password: str
+    token: str
 
 
 @app.post("/api/lock-wallet")
 def lock_wallet(data: LockWallet):
     db = SessionLocal()
     try:
-        target_wallet = db.query(Wallet).filter(Wallet.id == data.walletId).first()
+        user_id = verify_access_token(data.token)
+        target_wallet = (
+            db.query(Wallet)
+            .filter(Wallet.id == data.walletId, Wallet.user_id == user_id)
+            .first()
+        )
 
         if not target_wallet:
             raise HTTPException(status_code=404, detail="Wallet not found")
 
         if target_wallet.password == "":
-            # Update fields
             target_wallet.password = data.password
             target_wallet.last_used = datetime.now()
         else:
@@ -852,9 +967,38 @@ def lock_wallet(data: LockWallet):
         # Commit changes
         db.commit()
         db.refresh(target_wallet)
-        return {"status": "No Error", "message": "Wallet locked successfully"}
+
+        top_six = (
+            db.query(Wallet)
+            .filter(Wallet.hide == False, Wallet.user_id == user_id)
+            .order_by(Wallet.pin.desc(), Wallet.last_used.desc())
+            .limit(6)
+            .all()
+        )
+
+        rendered_wallets = []
+        for wallet in top_six:
+            if wallet.censor == True:
+                balance = "******"
+            elif wallet.censor == False:
+                balance = f"{wallet.balance:.2f}"
+            else:
+                balance = wallet.balance
+
+            rendered_wallets.append(
+                {
+                    "id": wallet.id,
+                    "name": wallet.name,
+                    "balance": balance,
+                    "password": wallet.password,
+                    "censor": wallet.censor,
+                    "pin": wallet.pin,
+                }
+            )
+
+        return {"wallets": rendered_wallets}
     except HTTPException as he:
-        raise he  # Let FastAPI handle 400, 404, etc. properly without converting to 500
+        raise he  # Let FastAPI handle 400, 404, etc. properly
     except Exception as e:
         db.rollback()  # Undo changes if something unexpected fails
         raise HTTPException(status_code=500, detail=str(e))
@@ -862,11 +1006,16 @@ def lock_wallet(data: LockWallet):
         db.close()
 
 
-@app.post("/api/create-wallet/{wallet_name}")
-def create_wallet(wallet_name: str):
+@app.post("/api/create-wallet/{wallet_name}/{token}")
+def create_wallet(wallet_name: str, token: str):
     db = SessionLocal()
     try:
-        existing_wallet = db.query(Wallet).filter(Wallet.name == wallet_name).first()
+        user_id = verify_access_token(token)
+        existing_wallet = (
+            db.query(Wallet)
+            .filter(Wallet.name == wallet_name, Wallet.user_id == user_id)
+            .first()
+        )
         if existing_wallet:
             raise HTTPException(
                 status_code=400, detail="A wallet with this name already exists."
@@ -877,7 +1026,7 @@ def create_wallet(wallet_name: str):
             name=wallet_name,
             balance=0.0,
             last_used=datetime.now(),
-            password="",  # Fixed from "'" to an empty string
+            password="",
             censor=False,
             hide=False,
             pin=False,
@@ -892,26 +1041,54 @@ def create_wallet(wallet_name: str):
         # 4. Refresh the instance to get updated fields (like generated IDs)
         db.refresh(new_wallet)
 
-        return {
-            "status": "No Error",
-            "message": "Wallet created successfully",
-        }
+        top_six = (
+            db.query(Wallet)
+            .filter(Wallet.hide == False, Wallet.user_id == user_id)
+            .order_by(Wallet.pin.desc(), Wallet.last_used.desc())
+            .limit(6)
+            .all()
+        )
+
+        rendered_wallets = []
+        for wallet in top_six:
+            if wallet.censor == True:
+                balance = "******"
+            elif wallet.censor == False:
+                balance = f"{wallet.balance:.2f}"
+            else:
+                balance = wallet.balance
+
+            rendered_wallets.append(
+                {
+                    "id": wallet.id,
+                    "name": wallet.name,
+                    "balance": balance,
+                    "password": wallet.password,
+                    "censor": wallet.censor,
+                    "pin": wallet.pin,
+                }
+            )
+
+        return {"wallets": rendered_wallets}
     except HTTPException as he:
-        raise he  # Let FastAPI handle 400, 404, etc. properly without converting to 500
+        raise he  # Let FastAPI handle 400, 404, etc. properly
     except Exception as e:
         db.rollback()  # Undo changes if something unexpected fails
         raise HTTPException(status_code=500, detail=str(e))
-
     finally:
-        # 5. Always close the session when done
         db.close()
 
 
-@app.post("/api/{function}/{wallet_id}")
-def toggle(function: str, wallet_id: str):
+@app.post("/api/{function}/{wallet_id}/{token}")
+def toggle(function: str, wallet_id: str, token: str):
     db = SessionLocal()
     try:
-        target_wallet = db.query(Wallet).filter(Wallet.id == wallet_id).first()
+        user_id = verify_access_token(token)
+        target_wallet = (
+            db.query(Wallet)
+            .filter(Wallet.id == wallet_id, Wallet.user_id == user_id)
+            .first()
+        )
 
         if not target_wallet:
             raise HTTPException(status_code=400, detail="Wallet not found")
@@ -930,7 +1107,7 @@ def toggle(function: str, wallet_id: str):
 
         top_six = (
             db.query(Wallet)
-            .filter(Wallet.hide == False)
+            .filter(Wallet.hide == False, Wallet.user_id == user_id)
             .order_by(Wallet.pin.desc(), Wallet.last_used.desc())
             .limit(6)
             .all()
@@ -969,124 +1146,116 @@ def toggle(function: str, wallet_id: str):
         db.close()
 
 
-class Adjust_Metrics(BaseModel):
-    currentIndex: int
+class RegisterLogin(BaseModel):
+    email: str
+    password: str
 
 
-@app.post("/api/adjust-metrics")
-def adjust_metrics(data: Adjust_Metrics):
+@app.post("/api/register")
+def Register(data: RegisterLogin):
     db = SessionLocal()
     try:
-        # Fetch Canvas Data
-        current_day = date.today()
-        current_year = current_day.year
-        current_month = current_day.month
+        allowed_entry = db.query(Access).filter(Access.email == data.email).first()
+        if not allowed_entry:
+            raise HTTPException(status_code=403, detail="Email access denied.")
 
-        # Find the start of the week (Monday)
-        start_of_week = current_day - timedelta(days=current_day.weekday())
-        end_of_week = start_of_week + timedelta(days=6)
+        existing_user = db.query(Users).filter(Users.email == data.email).first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="User already registered.")
 
-        # Get Metrics Index
+        hashed_password = hash_password(data.password)
 
-        if data.currentIndex == 0:
-            raw_canvas_data = (
-                db.query(
-                    Transactions.category, func.sum(Transactions.amount).label("total")
-                )
-                .filter(
-                    Transactions.category != "Income",
-                    Transactions.date == current_day,
-                )
-                .group_by(Transactions.category)
-                .all()
-            )
-            metrics_total = (
-                db.query(func.sum(Transactions.amount))
-                .filter(
-                    Transactions.category != "Income",
-                    Transactions.date == current_day,
-                )
-                .scalar()
-            ) or 0.0
+        new_user = Users(
+            email=data.email,
+            password=hashed_password,
+            profile_picture="/uploads/default_pfp.jpg",
+        )
 
-        elif data.currentIndex == 1:
-            raw_canvas_data = (
-                db.query(
-                    Transactions.category, func.sum(Transactions.amount).label("total")
-                )
-                .filter(
-                    Transactions.category != "Income",
-                    Transactions.date.between(start_of_week, end_of_week),
-                )
-                .group_by(Transactions.category)
-                .all()
-            )
-            metrics_total = (
-                db.query(func.sum(Transactions.amount))
-                .filter(
-                    Transactions.category != "Income",
-                    Transactions.date.between(start_of_week, end_of_week),
-                )
-                .scalar()
-            ) or 0.0
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
 
-        elif data.currentIndex == 2:
-            raw_canvas_data = (
-                db.query(
-                    Transactions.category, func.sum(Transactions.amount).label("total")
-                )
-                .filter(
-                    Transactions.category != "Income",
-                    extract("year", Transactions.date) == current_year,
-                    extract("month", Transactions.date) == current_month,
-                )
-                .group_by(Transactions.category)
-                .all()
-            )
-            metrics_total = (
-                db.query(func.sum(Transactions.amount))
-                .filter(
-                    Transactions.category != "Income",
-                    extract("year", Transactions.date) == current_year,
-                    extract("month", Transactions.date) == current_month,
-                )
-                .scalar()
-            ) or 0.0
-
-        elif data.currentIndex == 3:
-            raw_canvas_data = (
-                db.query(
-                    Transactions.category, func.sum(Transactions.amount).label("total")
-                )
-                .filter(
-                    Transactions.category != "Income",
-                    extract("year", Transactions.date) == current_year,
-                )
-                .group_by(Transactions.category)
-                .all()
-            )
-            metrics_total = (
-                db.query(func.sum(Transactions.amount))
-                .filter(
-                    Transactions.category != "Income",
-                    extract("year", Transactions.date) == current_year,
-                )
-                .scalar()
-            ) or 0.0
-        else:
-            raise HTTPException(status_code=400, detail="Invalid index")
-
-        canvas_data = {
-            "labels": [row.category for row in raw_canvas_data],
-            "data": [float(row.total) for row in raw_canvas_data],
+        access_token = create_access_token(data={"id": str(new_user.user_id)})
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",  # 👈 Just an informational label for the frontend
         }
-        return [canvas_data, metrics_total]
 
     except HTTPException as he:
         raise he  # Let FastAPI handle 400 properly
 
     except Exception as e:
         db.rollback()  # Undo changes if something unexpected fails
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        db.close()
+
+
+@app.post("/api/login")
+def Login(data: RegisterLogin):
+    db = SessionLocal()
+    try:
+        existing_user = db.query(Users).filter(Users.email == data.email).first()
+        if not existing_user:
+            raise HTTPException(status_code=400, detail="User not found.")
+
+        # Verify the password hash
+        if not verify_password(data.password, existing_user.password):
+            raise HTTPException(
+                status_code=401, detail="Incorrect password. Please try again."
+            )
+
+        # Create the token payload and generate the token
+        access_token = create_access_token(data={"id": str(existing_user.user_id)})
+
+        return {"access_token": access_token, "token_type": "bearer"}
+
+    except HTTPException as he:
+        raise he
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        db.close()
+
+
+@app.post("/api/render-settings/{token}")
+def render_settings(token: str):
+    db = SessionLocal()
+    try:
+        # 1. Verify the access token to get the user_id
+        user_id = verify_access_token(token=token)
+
+        # 2. Search the user table for profile_picture and email
+        user = db.query(Users).filter(Users.user_id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # 3. Search all wallets that are locked and belong to the user
+        locked_wallets = (
+            db.query(Wallet)
+            .filter(Wallet.user_id == user_id, Wallet.password != "")
+            .all()
+        )
+
+        # 4. Return the gathered data
+        return {
+            "email": user.email,
+            "profile_picture": user.profile_picture,
+            "locked_wallets": [
+                {"name": wallet.name, "password": wallet.password}
+                for wallet in locked_wallets
+            ],
+        }
+
+    except HTTPException as he:
+        raise he
+
+    except Exception as e:
+        db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
     finally:

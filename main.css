@@ -429,6 +429,7 @@ dialog.dialog-box2 {
   padding: 24px;
   border-radius: 12px;
   border: none;
+  overflow-x: hidden;
   width: 90%;
   max-width: 400px;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
@@ -545,8 +546,8 @@ dialog.dialog-box h3 {
 .dialog-btn button.to-register {
   background-color: var(--accent);
   color: var(--text);
-  font-size: x-small;
-  margin-right: 29px;
+  font-size: xx-small;
+  margin-right: 30px;
 }
 .btn-save {
   background-color: var(--accent);
@@ -580,4 +581,88 @@ dialog.dialog-box h3 {
 
 #register-dialog[open]::backdrop {
   background: rgba(0, 0, 0, 0.95); /* Extremely dark overlay */
+}
+
+.pfp {
+  width: 25%;
+  height: 20%;
+  border-radius: 9999px;
+}
+
+.email-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2px; /* Controls the tight spacing between label and email */
+}
+
+.inner-email {
+  display: flex;
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0; /* Removes the default browser margin from the h6 element */
+}
+
+/* Specifically style the h6 text color/weight if needed */
+#settings-email {
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+select.dropdown-cat {
+  background-color: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  width: 100%;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+}
+
+select.dropdown-cat:focus {
+  border-color: var(--accent);
+}
+
+select.dropdown-cat option {
+  background-color: var(--input-bg);
+  color: var(--text);
+  padding: 10px;
+}
+
+#whitelist-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.whitelist-item {
+  display: flex;
+  position: relative;
+}
+
+#whitelist-btn {
+  position: absolute;
+  right: 55px;
+  bottom: 52px;
+}
+
+.close {
+  position: absolute;
+  top: -9px;
+  right: -18px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.close i {
+  font-size: 32px; /* Adjust this to make the icon bigger or smaller safely */
 }

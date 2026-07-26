@@ -10,18 +10,36 @@ let monthlyTotal = 0.0;
 let yearlyData = [];
 let yearlyTotal = 0.0;
 
+fetchAndRenderMainPage();
+
 async function fetchAndRenderMainPage() {
   try {
-    // 1. Fetch data from your Python API
-    const response = await fetch("http://127.0.0.1:8000/api/render_main_page");
+    // 1. Always fetch the latest token safely inside the function
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      document.getElementById("login-dialog").showModal();
+      return;
+    }
 
-    // 2. Destructure into temporary constants without re-declaring global ones
+    // 2. Fetch data from your Python API
+    const response = await fetch(
+      "http://127.0.0.1:8000/api/render_main_page/" + token,
+      {
+        method: "POST",
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error("Server responded with status " + response.status);
+    }
+
+    // 3. Destructure into temporary constants without re-declaring global ones
     const responseData = await response.json();
     const walletData = responseData[0];
     const totalBalance = responseData[1];
     const transactionData = responseData[2];
 
-    // 3. Update the Global variables directly (releasing them globally)
+    // 4. Update the Global variables directly (releasing them globally)
     dailyData = responseData[3];
     dailyTotal = responseData[4];
     weeklyData = responseData[5];
@@ -30,8 +48,6 @@ async function fetchAndRenderMainPage() {
     monthlyTotal = responseData[8];
     yearlyData = responseData[9];
     yearlyTotal = responseData[10];
-
-    currentIndex = responseData[11];
 
     // Update the total balance display
     document.getElementById("total-balance").textContent =
@@ -45,8 +61,6 @@ async function fetchAndRenderMainPage() {
     console.error("Failed to load wallets:", error);
   }
 }
-
-fetchAndRenderMainPage();
 
 function renderWallets(walletData) {
   const grid = document.getElementById("wallet-grid");
@@ -153,7 +167,7 @@ function renderWallets(walletData) {
       e.preventDefault();
       try {
         const response = await fetch(
-          `http://127.0.0.1:8000/api/censor/${wallet.id}`,
+          `http://127.0.0.1:8000/api/censor/${wallet.id}/${token}`,
           { method: "POST" },
         );
         if (!response.ok) {
@@ -177,7 +191,7 @@ function renderWallets(walletData) {
       e.preventDefault();
       try {
         const response = await fetch(
-          `http://127.0.0.1:8000/api/hide/${wallet.id}`,
+          `http://127.0.0.1:8000/api/hide/${wallet.id}/${token}`,
           { method: "POST" },
         );
         if (!response.ok) {
@@ -206,7 +220,7 @@ function renderWallets(walletData) {
       e.preventDefault();
       try {
         const response = await fetch(
-          `http://127.0.0.1:8000/api/pin/${wallet.id}`,
+          `http://127.0.0.1:8000/api/pin/${wallet.id}/${token}`,
           { method: "POST" },
         );
         if (!response.ok) {
@@ -401,6 +415,7 @@ renameForm.addEventListener("submit", async (event) => {
       body: JSON.stringify({
         walletId: walletId,
         newName: newName,
+        token: token,
       }),
     });
 
@@ -411,6 +426,8 @@ renameForm.addEventListener("submit", async (event) => {
       newNameInput.value = "";
       return;
     }
+    const data = await response.json();
+    renderWallets(data.wallets);
   } catch (error) {
     console.error("Error updating wallet:", error);
     event.preventDefault(); // Stop dialog from closing if backend save failed
@@ -422,7 +439,6 @@ renameForm.addEventListener("submit", async (event) => {
   newNameInput.value = "";
   renameWarningText.innerHTML = "";
   renameDialog.close();
-  location.reload();
 });
 
 //====================== Delete Function ======================//
@@ -433,7 +449,7 @@ async function deleteWallet() {
   try {
     // 2. Send the POST request to your FastAPI backend
     const response = await fetch(
-      "http://127.0.0.1:8000/api/delete-wallet/" + walletId,
+      "http://127.0.0.1:8000/api/delete-wallet/" + walletId + token,
       {
         method: "POST",
       },
@@ -444,9 +460,9 @@ async function deleteWallet() {
       alert(`Error: ${errorData.detail}`);
       return;
     }
-
+    const data = await response.json();
+    renderWallets(data.wallets);
     deleteDialog2.close();
-    location.reload();
   } catch (error) {
     console.error("Error updating wallet:", error);
     event.preventDefault(); // Stop dialog from closing if backend save failed
@@ -595,6 +611,7 @@ passwordForm.addEventListener("submit", async (event) => {
       body: JSON.stringify({
         walletId: walletId,
         password: password,
+        token: token,
       }),
     });
 
@@ -604,12 +621,12 @@ passwordForm.addEventListener("submit", async (event) => {
       passwordInput.value = "";
       return;
     }
-
+    const data = await response.json();
+    renderWallets(data.wallets);
     // 4. Cleanup and reload page on success
     lockWarningText.innerHTML = "";
     passwordInput.value = "";
     passwordDialog.close();
-    location.reload();
   } catch (error) {
     console.error("Error updating wallet lock status:", error);
     lockWarningText.innerHTML =
@@ -644,7 +661,7 @@ createForm.addEventListener("submit", async (event) => {
   // 3. POST TO BACKEND (via fetch)
   try {
     const response = await fetch(
-      `http://127.0.0.1:8000/api/create-wallet/${walletName}`,
+      `http://127.0.0.1:8000/api/create-wallet/${walletName}/${token}`,
       {
         method: "POST",
         headers: {
@@ -659,6 +676,8 @@ createForm.addEventListener("submit", async (event) => {
       newWalletInput.value = "";
       return;
     }
+    const data = await response.json();
+    renderWallets(data.wallets);
   } catch (error) {
     console.error("Error updating wallet:", error);
     event.preventDefault(); // Stop dialog from closing if backend save failed
@@ -670,7 +689,6 @@ createForm.addEventListener("submit", async (event) => {
   newWalletInput.value = "";
   createWarningText.innerHTML = "";
   createDialog.close();
-  location.reload();
 });
 
 // ====================== Metrics Function ======================//
@@ -733,3 +751,279 @@ function adjustRightPanel() {
     alert(`Error: Invalid slide index (${currentIndex})`);
   }
 }
+
+// ====================== Register Function ======================//
+const registerForm = document.getElementById("register-form");
+const remailWarningText = document.getElementById(
+  "register-email-warning-text",
+);
+const rpwWarningText = document.getElementById(
+  "register-password-warning-text",
+);
+const registerDialog = document.getElementById("register-dialog");
+const remailInput = document.getElementById("register-email");
+const rpasswordInput = document.getElementById("register-password");
+
+registerDialog.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    event.preventDefault();
+  }
+});
+
+rpasswordInput.addEventListener("input", () => {
+  const password = rpasswordInput.value.trim();
+
+  // 1. If empty, clear text and reset style
+  if (password.length === 0) {
+    rpwWarningText.innerHTML = "";
+    rpwWarningText.style.color = "";
+    return;
+  }
+
+  // 2. If too short (< 8 characters)
+  if (password.length < 8) {
+    rpwWarningText.innerHTML =
+      '<i class="fa-solid fa-circle-xmark"></i> Invalid Password';
+    rpwWarningText.style.color = "";
+    return;
+  }
+
+  // 3. If valid (>= 8 characters)
+  if (password.length >= 8) {
+    rpwWarningText.innerHTML =
+      '<i class="fa-solid fa-circle-check"></i> Valid Password';
+    rpwWarningText.style.color = "#10b981";
+  }
+});
+registerForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const email = remailInput.value.trim();
+  const password = rpasswordInput.value.trim();
+
+  // 1. Validate email field
+  if (email.length === 0) {
+    remailWarningText.style.color = "";
+    remailWarningText.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
+    rpwWarningText.innerHTML = "";
+    return;
+  }
+
+  // 2. Validate password length
+  if (password.length < 8) {
+    rpwWarningText.style.color = "";
+    rpwWarningText.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Passwords must contain a minimum of 8 characters.';
+    rpasswordInput.value = "";
+    remailWarningText.innerHTML = "";
+    return;
+  }
+
+  // 3. Send registration request to backend
+  try {
+    const response = await fetch("http://127.0.0.1:8000/api/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: email,
+        password: password,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      // Show backend error (e.g., unauthorized email whitelist, or user already exists)
+      remailWarningText.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${errorData.detail}`;
+      remailInput.value = "";
+      rpwWarningText.innerHTML = "";
+      rpasswordInput.value = "";
+      return;
+    }
+
+    const data = await response.json();
+    // --- STORE THE AUTH TOKEN HERE ---
+    // (Make sure "access_token" matches whatever key your FastAPI backend returns)
+    localStorage.setItem("authToken", data.access_token);
+    // 4. Success handling (Clear form and redirect to login or dashboard)
+    if (response) {
+      remailWarningText.innerHTML = "";
+      rpwWarningText.innerHTML = "";
+      remailInput.value = "";
+      rpasswordInput.value = "";
+      registerDialog.close();
+      fetchAndRenderMainPage();
+    }
+  } catch (error) {
+    console.error("Error during registration:", error);
+    remailWarningText.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> An error occurred. Please try again.';
+  }
+});
+
+/// ====================== Login Function ======================//
+const loginForm = document.getElementById("login-form");
+const lemailWarningText = document.getElementById("login-email-warning-text");
+const lpwWarningText = document.getElementById("login-password-warning-text");
+const loginDialog = document.getElementById("login-dialog");
+const lemailInput = document.getElementById("login-email");
+const lpasswordInput = document.getElementById("login-password");
+
+loginDialog.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    event.preventDefault();
+  }
+});
+
+lpasswordInput.addEventListener("input", () => {
+  const password = lpasswordInput.value.trim();
+
+  // 1. If empty, clear text and reset style
+  if (password.length === 0) {
+    lpwWarningText.innerHTML = "";
+    lpwWarningText.style.color = "";
+    return;
+  }
+
+  // 2. If too short (< 8 characters)
+  if (password.length < 8) {
+    lpwWarningText.innerHTML =
+      '<i class="fa-solid fa-circle-xmark"></i> Invalid Password';
+    lpwWarningText.style.color = "";
+    return;
+  }
+
+  // 3. If valid (>= 8 characters)
+  if (password.length >= 8) {
+    lpwWarningText.innerHTML =
+      '<i class="fa-solid fa-circle-check"></i> Valid Password';
+    lpwWarningText.style.color = "#10b981";
+  }
+});
+
+loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const email = lemailInput.value.trim();
+  const password = lpasswordInput.value.trim();
+
+  // 1. Validate email field
+  if (email.length === 0) {
+    lemailWarningText.style.color = "";
+    lemailWarningText.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
+    lpwWarningText.innerHTML = "";
+    return;
+  }
+
+  // 2. Validate password length
+  if (password.length < 8) {
+    lpwWarningText.style.color = "";
+    lpwWarningText.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Passwords must contain a minimum of 8 characters.';
+    lpasswordInput.value = "";
+    lemailWarningText.innerHTML = "";
+    return;
+  }
+
+  // 3. Send login request to backend
+  try {
+    const response = await fetch("http://127.0.0.1:8000/api/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: email,
+        password: password,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      // Check the error status properly
+      const statusCode = response.status || data.status;
+
+      if (statusCode === 400) {
+        lemailWarningText.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${data.detail}`;
+        lemailInput.value = "";
+        lpwWarningText.innerHTML = "";
+        lpasswordInput.value = "";
+        return;
+      }
+
+      if (statusCode === 401) {
+        lpwWarningText.style.color = "";
+        lpwWarningText.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${data.detail}`;
+        lemailWarningText.innerHTML = "";
+        lpasswordInput.value = "";
+        return;
+      }
+    }
+
+    // --- STORE THE AUTH TOKEN HERE ---
+    localStorage.setItem("authToken", data.access_token);
+
+    // 4. Success handling (Clear form)
+    if (response) {
+      lemailWarningText.innerHTML = "";
+      lpwWarningText.innerHTML = "";
+      lemailInput.value = "";
+      lpasswordInput.value = "";
+      fetchAndRenderMainPage();
+      loginDialog.close();
+    }
+  } catch (error) {
+    console.error("Error during login:", error);
+    lemailWarningText.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> An error occurred. Please try again.';
+  }
+});
+
+// ============= Settings Function ============= //
+const openSettings = document.getElementById("open-settings");
+const settingsDialog = document.getElementById("settings-dialog");
+
+openSettings.addEventListener("click", async (e) => {
+  e.preventDefault();
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      document.getElementById("login-dialog").showModal();
+      return;
+    }
+
+    const response = await fetch(
+      "http://127.0.0.1:8000/api/render-settings/" + token,
+      {
+        method: "POST",
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Failed to fetch settings:", data.detail);
+      return;
+    }
+
+    // Extract values from the backend response dictionary
+    const email = data.email;
+    const pfp = data.profile_picture;
+    const lockedWallets = data.locked_wallets;
+    console.log(pfp);
+    // Update settings UI elements
+    document.getElementById("settings-email").textContent = email;
+
+    const pfpElement = document.getElementById("settings-pfp");
+
+    pfpElement.src = "http://127.0.0.1:8000/uploads/" + pfp;
+
+    settingsDialog.showModal();
+  } catch (error) {
+    console.error("Error opening settings:", error);
+  }
+});

@@ -20,9 +20,6 @@
         <div class="total">
           <div class="label">Total Balance</div>
           <div class="value" id="total-balance">RM0.00</div>
-          <button onclick="document.getElementById('login-dialog').showModal()">
-            hi
-          </button>
         </div>
       </div>
 
@@ -49,7 +46,9 @@
                   <i class="fa-solid fa-square-plus"></i> Create Wallet</a
                 >
                 <a> <i class="fa-solid fa-wallet"></i> View All Wallet</a>
-                <a> <i class="fa-solid fa-gear"></i> Settings</a>
+                <a id="open-settings">
+                  <i class="fa-solid fa-gear"></i> Settings</a
+                >
                 <a> <i class="fa-solid fa-filter"></i> Filter</a>
               </div>
             </div>
@@ -374,6 +373,12 @@
             onclick="
               document.getElementById('login-dialog').close();
               document.getElementById('register-dialog').showModal();
+              document.getElementById('login-email').value = '';
+              document.getElementById('login-password').value = '';
+              document.getElementById('login-email-warning-text').innerHTML =
+                '';
+              document.getElementById('login-password-warning-text').innerHTML =
+                '';
             "
           >
             <i class="fa-solid fa-user-plus"></i>&nbsp;Register Account
@@ -430,6 +435,23 @@
 
         <div class="dialog-btn">
           <button
+            class="to-register"
+            type="button"
+            onclick="
+              document.getElementById('register-dialog').close();
+              document.getElementById('login-dialog').showModal();
+              document.getElementById('register-email').value = '';
+              document.getElementById('register-password').value = '';
+              document.getElementById('register-email-warning-text').innerHTML =
+                '';
+              document.getElementById(
+                'register-password-warning-text',
+              ).innerHTML = '';
+            "
+          >
+            <i class="fa-solid fa-right-to-bracket"></i>&nbsp;Login Account
+          </button>
+          <button
             onclick="
               document.getElementById('register-email').value = '';
               document.getElementById('register-password').value = '';
@@ -448,6 +470,115 @@
           <button class="btn-save" type="submit">
             <i class="fa-solid fa-user-plus"></i>&nbsp;Register
           </button>
+        </div>
+      </form>
+    </dialog>
+    <!-- Settings Dialog Box -->
+    <dialog class="dialog-box" id="settings-dialog">
+      <form id="settings-form" method="dialog">
+        <h3 id="settings-title">Settings</h3>
+
+        <!-- Round PFP and Email Label Section -->
+        <div class="input-group">
+          <img src="" alt="Profile Picture" class="pfp" id="settings-pfp" />
+          <div class="email-container">
+            <div class="inner-email">Email Address</div>
+            <h6 class="inner-email" id="settings-email">user@example.com</h6>
+          </div>
+        </div>
+
+        <!-- Password Buttons Row -->
+        <div class="dialog-btn" style="margin-right: 30px; margin-bottom: 20px">
+          <button
+            class="btn-save"
+            type="button"
+            style="width: 100%; font-size: 12px"
+          >
+            <i class="fa-solid fa-retweet"></i>&nbsp;Change Password
+          </button>
+          <button
+            class="btn-save"
+            type="button"
+            style="width: 100%; font-size: 12px"
+          >
+            <i class="fa-solid fa-key"></i>&nbsp;Check Passwords
+          </button>
+        </div>
+
+        <!-- Dropdown Menu: Change Theme -->
+        <div class="input-group">
+          <label for="settings-theme">Theme</label>
+          <select
+            id="settings-theme"
+            name="settings-theme"
+            class="dropdown-cat"
+          >
+            <option value="dark">Dark (Default)</option>
+            <option value="light">Light</option>
+          </select>
+        </div>
+
+        <!-- Dropdown Menu: Change Metrics (Default is Monthly) -->
+        <div class="input-group">
+          <label for="settings-metrics">Metrics Interval</label>
+          <select
+            id="settings-metrics"
+            name="settings-metrics"
+            class="dropdown-cat"
+          >
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly" selected>Monthly (Default)</option>
+            <option value="yearly">Yearly</option>
+          </select>
+        </div>
+
+        <!-- Log Out Button -->
+        <div
+          class="dialog-btn"
+          style="margin-top: 2px; margin-bottom: 12px; justify-content: center"
+        >
+          <button
+            class="btn-dlt"
+            type="button"
+            width="100%"
+            onclick="
+              localStorage.removeItem('authToken');
+              location.reload();
+            "
+          >
+            <i class="fa-solid fa-right-from-bracket"></i>&nbsp;Log Out
+          </button>
+          <button class="btn-save" type="submit" width="100%">
+            <i class="fa-solid fa-floppy-disk"></i>&nbsp;Apply
+          </button>
+        </div>
+
+        <!-- Whitelist Container at the very bottom -->
+        <div class="input-group" id="whitelist-box">
+          <label for="whitelist-email" class="whitelist-item"
+            >Grant Permission</label
+          >
+          <div>
+            <input
+              type="email"
+              id="whitelist-email"
+              name="whitelist-email"
+              placeholder="example@gmail.com"
+              class="whitelist-item"
+            />
+            <div class="dialog-btn">
+              <button class="btn-save" id="whitelist-btn" type="button">
+                <i class="fa-solid fa-plus"></i>&nbsp;Whitelist
+              </button>
+              <button class="close">
+                <i
+                  class="fa-solid fa-circle-xmark"
+                  style="color: rgb(210, 5, 5)"
+                ></i>
+              </button>
+            </div>
+          </div>
         </div>
       </form>
     </dialog>

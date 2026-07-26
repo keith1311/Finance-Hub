@@ -56,50 +56,52 @@ async function fetchAndRenderWalletPage() {
       },
     );
     const responseData = await response.json();
+
+    // --- Core Info (0 to 2) ---
     const header = responseData[0];
     const transactionData = responseData[1];
-    currentIndex = responseData[2];
-    // --- Daily (Indexes 3 to 7) ---
-    metricsData.daily.canvasData = responseData[3];
-    metricsData.daily.expense = responseData[4];
-    metricsData.daily.income = responseData[5];
-    metricsData.daily.savings = responseData[6];
-    metricsData.daily.total = responseData[7];
+    // (Assuming index 2 is your next item, or shift everything up if 1 and 2 were missing)
 
-    // --- Weekly (Indexes 8 to 12) ---
-    metricsData.weekly.canvasData = responseData[8];
-    metricsData.weekly.expense = responseData[9];
-    metricsData.weekly.income = responseData[10];
-    metricsData.weekly.savings = responseData[11];
-    metricsData.weekly.total = responseData[12];
+    // --- Daily (Indexes 2 to 6) ---
+    metricsData.daily.canvasData = responseData[2];
+    metricsData.daily.expense = responseData[3];
+    metricsData.daily.income = responseData[4];
+    metricsData.daily.savings = responseData[5];
+    metricsData.daily.total = responseData[6];
 
-    // --- Monthly (Indexes 13 to 17) ---
-    metricsData.monthly.canvasData = responseData[13];
-    metricsData.monthly.expense = responseData[14];
-    metricsData.monthly.income = responseData[15];
-    metricsData.monthly.savings = responseData[16];
-    metricsData.monthly.total = responseData[17];
+    // --- Weekly (Indexes 7 to 11) ---
+    metricsData.weekly.canvasData = responseData[7];
+    metricsData.weekly.expense = responseData[8];
+    metricsData.weekly.income = responseData[9];
+    metricsData.weekly.savings = responseData[10];
+    metricsData.weekly.total = responseData[11];
 
-    // --- Yearly (Indexes 18 to 22) ---
-    metricsData.yearly.canvasData = responseData[18];
-    metricsData.yearly.expense = responseData[19];
-    metricsData.yearly.income = responseData[20];
-    metricsData.yearly.savings = responseData[21];
-    metricsData.yearly.total = responseData[22];
+    // --- Monthly (Indexes 12 to 16) ---
+    metricsData.monthly.canvasData = responseData[12];
+    metricsData.monthly.expense = responseData[13];
+    metricsData.monthly.income = responseData[14];
+    metricsData.monthly.savings = responseData[15];
+    metricsData.monthly.total = responseData[16];
 
-    // --- Percentage --- //
-    metricsData.daily.percentage = responseData[23];
-    metricsData.daily.nature = responseData[24];
+    // --- Yearly (Indexes 17 to 21) ---
+    metricsData.yearly.canvasData = responseData[17];
+    metricsData.yearly.expense = responseData[18];
+    metricsData.yearly.income = responseData[19];
+    metricsData.yearly.savings = responseData[20];
+    metricsData.yearly.total = responseData[21];
 
-    metricsData.weekly.percentage = responseData[25];
-    metricsData.weekly.nature = responseData[26];
+    // --- Percentage & Nature (Indexes 22 to 29) ---
+    metricsData.daily.percentage = responseData[22];
+    metricsData.daily.nature = responseData[23];
 
-    metricsData.monthly.percentage = responseData[27];
-    metricsData.monthly.nature = responseData[28];
+    metricsData.weekly.percentage = responseData[24];
+    metricsData.weekly.nature = responseData[25];
 
-    metricsData.yearly.percentage = responseData[29];
-    metricsData.yearly.nature = responseData[30];
+    metricsData.monthly.percentage = responseData[26];
+    metricsData.monthly.nature = responseData[27];
 
+    metricsData.yearly.percentage = responseData[28];
+    metricsData.yearly.nature = responseData[29];
     document.getElementById("title").textContent = header.name;
     document.getElementById("total-balance").textContent =
       `RM${header.balance.toFixed(2)}`;

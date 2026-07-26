@@ -365,7 +365,7 @@ body {
   align-items: center;
   height: 100%;
   font-weight: 700;
-  margin-top: -5px;
+  margin-top: 0px;
   gap: 20px;
 }
 
@@ -377,7 +377,7 @@ body {
   display: flex;
   flex-direction: row;
   gap: 48px;
-  margin-left: 15px;
+  margin-left: 25px;
   color: var(--muted);
   font-size: 13px;
 }
