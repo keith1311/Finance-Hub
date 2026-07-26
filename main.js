@@ -1,16 +1,37 @@
 let currentIndex = 2;
 
+// Declare global variables (using let so they can be reassigned)
+let dailyData = [];
+let dailyTotal = 0.0;
+let weeklyData = [];
+let weeklyTotal = 0.0;
+let monthlyData = [];
+let monthlyTotal = 0.0;
+let yearlyData = [];
+let yearlyTotal = 0.0;
+
 async function fetchAndRenderMainPage() {
   try {
     // 1. Fetch data from your Python API
     const response = await fetch("http://127.0.0.1:8000/api/render_main_page");
-    const [
-      walletData,
-      totalBalance,
-      transactionData,
-      canvasData,
-      metricsTotal,
-    ] = await response.json();
+
+    // 2. Destructure into temporary constants without re-declaring global ones
+    const responseData = await response.json();
+    const walletData = responseData[0];
+    const totalBalance = responseData[1];
+    const transactionData = responseData[2];
+
+    // 3. Update the Global variables directly (releasing them globally)
+    dailyData = responseData[3];
+    dailyTotal = responseData[4];
+    weeklyData = responseData[5];
+    weeklyTotal = responseData[6];
+    monthlyData = responseData[7];
+    monthlyTotal = responseData[8];
+    yearlyData = responseData[9];
+    yearlyTotal = responseData[10];
+
+    currentIndex = responseData[11];
 
     // Update the total balance display
     document.getElementById("total-balance").textContent =
@@ -18,7 +39,7 @@ async function fetchAndRenderMainPage() {
 
     renderWallets(walletData);
     renderTransactionTable(transactionData);
-    renderRightPanel(canvasData, metricsTotal);
+    adjustRightPanel();
     updateSlide();
   } catch (error) {
     console.error("Failed to load wallets:", error);
@@ -664,30 +685,7 @@ prevBtn.addEventListener("click", async () => {
   if (currentIndex > 0) {
     currentIndex--;
     updateSlide();
-    try {
-      const response = await fetch("http://127.0.0.1:8000/api/adjust-metrics", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          currentIndex: currentIndex,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        alert(`Error: ${errorData.detail}`);
-        return;
-      } else {
-        const [canvasData, metricsTotal] = await response.json();
-        renderRightPanel(canvasData, metricsTotal);
-      }
-    } catch (error) {
-      console.error("Error updating metrics:", error);
-      alert("An error occurred while saving. Please try again.");
-      return;
-    }
+    adjustRightPanel();
   }
 });
 
@@ -696,35 +694,12 @@ nextBtn.addEventListener("click", async () => {
   if (currentIndex < 3) {
     currentIndex++;
     updateSlide();
-    try {
-      const response = await fetch("http://127.0.0.1:8000/api/adjust-metrics", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          currentIndex: currentIndex,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        alert(`Error: ${errorData.detail}`);
-        return;
-      } else {
-        const [canvasData, metricsTotal] = await response.json();
-        renderRightPanel(canvasData, metricsTotal);
-      }
-    } catch (error) {
-      console.error("Error updating metrics:", error);
-      alert("An error occurred while saving. Please try again.");
-      return;
-    }
+    adjustRightPanel();
   }
 });
 
 // 5. Update slider position and get active value
-async function updateSlide() {
+function updateSlide() {
   const percentage = -currentIndex * 25;
   wrapper.style.transform = `translateX(${percentage}%)`;
   wrapper2.style.transform = `translateX(${percentage}%)`;
@@ -740,5 +715,21 @@ async function updateSlide() {
     nextBtn.classList.add("hidden");
   } else {
     nextBtn.classList.remove("hidden");
+  }
+}
+
+function adjustRightPanel() {
+  if (currentIndex === 0) {
+    renderRightPanel(dailyData, dailyTotal);
+  } else if (currentIndex === 1) {
+    renderRightPanel(weeklyData, weeklyTotal);
+  } else if (currentIndex === 2) {
+    renderRightPanel(monthlyData, monthlyTotal);
+  } else if (currentIndex === 3) {
+    renderRightPanel(yearlyData, yearlyTotal);
+  } else {
+    // Fixed: Replaced Python string formatting with JavaScript template literal
+    console.error(`Error: Invalid currentIndex of ${currentIndex}`);
+    alert(`Error: Invalid slide index (${currentIndex})`);
   }
 }

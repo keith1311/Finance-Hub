@@ -13,6 +13,7 @@
   </head>
 
   <body>
+    <script src="wallets.js" defer></script>
     <div class="container">
       <div class="header">
         <div class="title" id="title"></div>
@@ -24,13 +25,74 @@
 
       <div class="workspace">
         <div class="left">
-          <div class="section-title">MONTHLY ANALYSIS CHART</div>
+          <div class="section-title">
+            <div class="view-container2">
+              <div class="view-wrapper2" id="view-wrapper3">
+                <div class="view-item2">Daily Chart Analysis</div>
+                <div class="view-item2">Weekly Chart Analysis</div>
+                <div class="view-item2">Monthly Chart Analysis</div>
+                <div class="view-item2">Yearly Chart Analysis</div>
+              </div>
+            </div>
+          </div>
           <div class="upper-left">
             <div class="analysis-card">
               <div class="analysis-header">
-                Expense & Income analysis breakdown
+                <div class="analysis-title">
+                  <div class="analysis-item">Income</div>
+                  <div class="analysis-item">Expense</div>
+                  <div class="analysis-item">Savings</div>
+                </div>
+                <div class="view-container3">
+                  <div class="view-wrapper3" id="view-wrapper4">
+                    <div class="view-item3">
+                      <div class="inner-item" id="daily-inc-display">
+                        Income
+                      </div>
+                      <div class="inner-item" id="daily-exp-display">
+                        Expense
+                      </div>
+                      <div class="inner-item" id="daily-sav-display">
+                        Savings
+                      </div>
+                    </div>
+                    <div class="view-item3">
+                      <div class="inner-item" id="weekly-inc-display">
+                        Income
+                      </div>
+                      <div class="inner-item" id="weekly-exp-display">
+                        Expense
+                      </div>
+                      <div class="inner-item" id="weekly-sav-display">
+                        Savings
+                      </div>
+                    </div>
+                    <div class="view-item3">
+                      <div class="inner-item" id="monthly-inc-display">
+                        Income
+                      </div>
+                      <div class="inner-item" id="monthly-exp-display">
+                        Expense
+                      </div>
+                      <div class="inner-item" id="monthly-sav-display">
+                        Savings
+                      </div>
+                    </div>
+                    <div class="view-item3">
+                      <div class="inner-item" id="yearly-inc-display">
+                        Income
+                      </div>
+                      <div class="inner-item" id="yearly-exp-display">
+                        Expense
+                      </div>
+                      <div class="inner-item" id="yearly-sav-display">
+                        Savings
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div class="analysis-chart">
+              <div class="analysis-chart" id="analysis-area">
                 <canvas id="analysis-chart"></canvas>
               </div>
             </div>
@@ -72,20 +134,196 @@
 
         <div class="right">
           <div class="card">
-            <div style="font-weight: 700; margin-bottom: 8px">
-              MONTHLY EXPENSES
+            <div class="right-header">
+              <!-- Left Arrow Div with ID added -->
+              <div class="arrow-btn" id="prevBtn">
+                <i class="fa-solid fa-angle-left"></i>
+              </div>
+
+              <!-- The Sliding View Container -->
+              <div class="view-container">
+                <div class="view-wrapper" id="view-wrapper">
+                  <div class="view-item">Daily</div>
+                  <div class="view-item">Weekly</div>
+                  <div class="view-item">Monthly</div>
+                  <div class="view-item">Yearly</div>
+                </div>
+              </div>
+
+              <!-- Right Arrow Div with ID added -->
+              <div class="arrow-btn" id="nextBtn">
+                <i class="fa-solid fa-angle-right"></i>
+              </div>
             </div>
             <div class="chart-area" id="chart-area">
               <canvas id="expenseChart"></canvas>
             </div>
-            <div class="monthly-total">
-              Monthly Total:
-              <span style="font-size: 18px" id="monthly-total">RM0.00</span>
+
+            <div class="metrics-total" id="metrics-title">
+              <div class="view-container">
+                <div class="view-wrapper" id="view-wrapper2">
+                  <div class="view-item">Daily Total</div>
+                  <div class="view-item">Weekly Total</div>
+                  <div class="view-item">Monthly Total</div>
+                  <div class="view-item">Yearly Total</div>
+                </div>
+              </div>
+              <div style="margin-top: 1px; font-weight: 700">:&nbsp;&nbsp;</div>
+              <div class="metrics-amt" id="metrics-amt">RM0.00</div>
             </div>
           </div>
         </div>
       </div>
     </div>
-    <script src="wallets.js" defer></script>
+
+    <!-- ====================== Income Dialog ====================== -->
+    <dialog class="dialog-box" id="income-dialog">
+      <form id="income-form" method="dialog">
+        <h3>Add Income</h3>
+
+        <div class="input-group">
+          <label for="income-date">Choose A Date</label>
+          <input type="date" id="income-date" name="income-date" />
+          <p
+            style="
+              color: var(--muted);
+              font-size: 13px;
+              margin-top: -6px;
+              margin-left: 5px;
+              margin-bottom: -12px;
+            "
+            id="inc-date-warning-text"
+          >
+            *This is optional.
+          </p>
+        </div>
+
+        <div class="input-group">
+          <label for="income-tag">Enter Tags</label>
+          <input
+            type="text"
+            id="income-tag"
+            name="income-tag"
+            placeholder="e.g. Toll"
+          />
+          <p class="warning-text" id="inc-tag-warning-text"></p>
+        </div>
+
+        <div class="input-group">
+          <label for="income-amt">Enter Amount</label>
+          <input
+            type="number"
+            id="income-amt"
+            name="income-amt"
+            placeholder="RM0.00"
+          />
+          <p class="warning-text" id="inc-amt-warning-text"></p>
+        </div>
+
+        <div class="dialog-btn">
+          <button
+            onclick="
+              document.getElementById('income-date').value = '';
+              document.getElementById('income-tag').value = '';
+              document.getElementById('income-amt').value = '';
+              document.getElementById('inc-tag-warning-text').innerHTML = '';
+              document.getElementById('inc-amt-warning-text').innerHTML = '';
+              document.getElementById('income-dialog').close();
+            "
+            class="btn-cancel"
+            type="button"
+          >
+            <i class="fa-solid fa-xmark"></i> Cancel
+          </button>
+          <button class="btn-save" type="submit">
+            <i class="fa-solid fa-money-check-dollar"></i> &nbsp;Add Income
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- ====================== Transaction Dialog ====================== -->
+    <dialog class="dialog-box" id="transaction-dialog">
+      <form id="transaction-form" method="dialog">
+        <h3>Create Transaction</h3>
+
+        <div class="input-group">
+          <label for="transaction-date">Choose A Date</label>
+          <input type="date" id="transaction-date" name="transaction-date" />
+          <p
+            style="
+              color: var(--muted);
+              font-size: 13px;
+              margin-top: -6px;
+              margin-left: 5px;
+              margin-bottom: -12px;
+            "
+            id="tran-date-warning-text"
+          >
+            *This is optional.
+          </p>
+        </div>
+
+        <div class="input-group">
+          <label for="transaction-tag">Enter Tags</label>
+          <input
+            type="text"
+            id="transaction-tag"
+            name="transaction-tag"
+            placeholder="e.g. Toll"
+          />
+          <p class="warning-text" id="tran-tag-warning-text"></p>
+        </div>
+
+        <div class="input-group">
+          <label for="transaction-cat">Select Category</label>
+          <select id="transaction-cat" class="dropdown-cat">
+            <option value="Food">Food</option>
+            <option value="Transportation">Transportation</option>
+            <option value="Shopping">Shopping</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Bills">Bills</option>
+            <option value="Investments">Investments</option>
+            <option value="Healthcare">Healthcare</option>
+            <option value="Groceries">Groceries</option>
+            <option value="Others">Others</option>
+          </select>
+          <p class="warning-text" id="tran-cat-warning-text"></p>
+        </div>
+
+        <div class="input-group">
+          <label for="transaction-amt">Enter Amount</label>
+          <input
+            type="number"
+            id="transaction-amt"
+            name="transaction-amt"
+            placeholder="RM0.00"
+          />
+          <p class="warning-text" id="tran-amt-warning-text"></p>
+        </div>
+
+        <div class="dialog-btn">
+          <button
+            onclick="
+              document.getElementById('transaction-date').value = '';
+              document.getElementById('transaction-tag').value = '';
+              document.getElementById('transaction-cat').value = 'Food';
+              document.getElementById('transaction-amt').value = '';
+              document.getElementById('tran-tag-warning-text').innerHTML = '';
+              document.getElementById('tran-cat-warning-text').innerHTML = '';
+              document.getElementById('tran-amt-warning-text').innerHTML = '';
+              document.getElementById('transaction-dialog').close();
+            "
+            class="btn-cancel"
+            type="button"
+          >
+            <i class="fa-solid fa-xmark"></i> Cancel
+          </button>
+          <button class="btn-save" type="submit">
+            <i class="fa-solid fa-cart-shopping"></i>&nbsp;Create Transaction
+          </button>
+        </div>
+      </form>
+    </dialog>
   </body>
 </html>

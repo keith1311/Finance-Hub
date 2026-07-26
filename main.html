@@ -20,6 +20,9 @@
         <div class="total">
           <div class="label">Total Balance</div>
           <div class="value" id="total-balance">RM0.00</div>
+          <button onclick="document.getElementById('login-dialog').showModal()">
+            hi
+          </button>
         </div>
       </div>
 
@@ -332,6 +335,118 @@
           </button>
           <button class="btn-save" type="submit">
             <i class="fa-solid fa-arrow-right-to-bracket"></i> Access Wallet
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <!-- ====================== Login Dialog ====================== -->
+    <dialog class="dialog-box" id="login-dialog">
+      <form id="login-form" method="dialog">
+        <h3 id="login-title">Log In To Your Account</h3>
+
+        <div class="input-group">
+          <label for="login-email">Enter Email</label>
+          <input
+            type="email"
+            id="login-email"
+            name="login-email"
+            placeholder="example@gmail.com"
+          />
+          <p class="warning-text" id="login-email-warning-text"></p>
+        </div>
+
+        <div class="input-group">
+          <label for="login-password">Enter password</label>
+          <input
+            type="password"
+            id="login-password"
+            name="login-password"
+            autocomplete="current-password"
+            placeholder="Enter Password Here..."
+          />
+          <p class="warning-text" id="login-password-warning-text"></p>
+        </div>
+
+        <div class="dialog-btn">
+          <button
+            class="to-register"
+            type="button"
+            onclick="
+              document.getElementById('login-dialog').close();
+              document.getElementById('register-dialog').showModal();
+            "
+          >
+            <i class="fa-solid fa-user-plus"></i>&nbsp;Register Account
+          </button>
+          <button
+            onclick="
+              document.getElementById('login-email').value = '';
+              document.getElementById('login-password').value = '';
+              document.getElementById('login-email-warning-text').innerHTML =
+                '';
+              document.getElementById('login-password-warning-text').innerHTML =
+                '';
+              document.getElementById('login-dialog').close();
+            "
+            class="btn-cancel"
+            type="button"
+          >
+            <i class="fa-solid fa-xmark"></i> Cancel
+          </button>
+          <button class="btn-save" type="submit">
+            <i class="fa-solid fa-right-to-bracket"></i>&nbsp;Log In
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- ====================== Register Dialog ====================== -->
+    <dialog class="dialog-box" id="register-dialog">
+      <form id="register-form" method="dialog">
+        <h3 id="register-title">Register An Account</h3>
+
+        <div class="input-group">
+          <label for="register-email">Enter Email</label>
+          <input
+            type="email"
+            id="register-email"
+            name="register-email"
+            placeholder="example@gmail.com"
+          />
+          <p class="warning-text" id="register-email-warning-text"></p>
+        </div>
+
+        <div class="input-group">
+          <label for="register-password">Enter password</label>
+          <input
+            type="password"
+            id="register-password"
+            name="register-password"
+            autocomplete="new-password"
+            placeholder="Enter Password Here..."
+          />
+          <p class="warning-text" id="register-password-warning-text"></p>
+        </div>
+
+        <div class="dialog-btn">
+          <button
+            onclick="
+              document.getElementById('register-email').value = '';
+              document.getElementById('register-password').value = '';
+              document.getElementById('register-email-warning-text').innerHTML =
+                '';
+              document.getElementById(
+                'register-password-warning-text',
+              ).innerHTML = '';
+              document.getElementById('register-dialog').close();
+            "
+            class="btn-cancel"
+            type="button"
+          >
+            <i class="fa-solid fa-xmark"></i> Cancel
+          </button>
+          <button class="btn-save" type="submit">
+            <i class="fa-solid fa-user-plus"></i>&nbsp;Register
           </button>
         </div>
       </form>

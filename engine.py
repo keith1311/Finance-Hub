@@ -69,6 +69,7 @@ def render_main_page():
             Wallet.name.label("wallet_name"),
         )
         .order_by(Transactions.date.desc())
+        .limit(100)
         .all()
     )
 
@@ -96,100 +97,114 @@ def render_main_page():
     # Get Metrics Index (Hardcoded to 2 for now, but you can pass this via query params later)
     current_index = 2
 
-    if current_index == 0:
-        raw_canvas_data = (
-            db.query(
-                Transactions.category, func.sum(Transactions.amount).label("total")
-            )
-            .filter(
-                Transactions.category != "Income",
-                Transactions.date == current_day,
-            )
-            .group_by(Transactions.category)
-            .all()
-        )
-        metrics_total = (
-            db.query(func.sum(Transactions.amount))
-            .filter(
-                Transactions.category != "Income",
-                Transactions.date == current_day,
-            )
-            .scalar()
-        ) or 0.0
+    # --- 1. DAILY DATA ---
+    raw_daily_data = (
+        db.query(Transactions.category, func.sum(Transactions.amount).label("total"))
+        .filter(Transactions.category != "Income", Transactions.date == current_day)
+        .group_by(Transactions.category)
+        .all()
+    )
+    daily_total = (
+        db.query(func.sum(Transactions.amount))
+        .filter(Transactions.category != "Income", Transactions.date == current_day)
+        .scalar()
+    ) or 0.0
 
-    elif current_index == 1:
-        raw_canvas_data = (
-            db.query(
-                Transactions.category, func.sum(Transactions.amount).label("total")
-            )
-            .filter(
-                Transactions.category != "Income",
-                Transactions.date.between(start_of_week, end_of_week),
-            )
-            .group_by(Transactions.category)
-            .all()
-        )
-        metrics_total = (
-            db.query(func.sum(Transactions.amount))
-            .filter(
-                Transactions.category != "Income",
-                Transactions.date.between(start_of_week, end_of_week),
-            )
-            .scalar()
-        ) or 0.0
+    daily_data = {
+        "labels": [row.category for row in raw_daily_data],
+        "data": [float(row.total) for row in raw_daily_data],
+    }
 
-    elif current_index == 2:
-        raw_canvas_data = (
-            db.query(
-                Transactions.category, func.sum(Transactions.amount).label("total")
-            )
-            .filter(
-                Transactions.category != "Income",
-                extract("year", Transactions.date) == current_year,
-                extract("month", Transactions.date) == current_month,
-            )
-            .group_by(Transactions.category)
-            .all()
+    # --- 2. WEEKLY DATA ---
+    raw_weekly_data = (
+        db.query(Transactions.category, func.sum(Transactions.amount).label("total"))
+        .filter(
+            Transactions.category != "Income",
+            Transactions.date.between(start_of_week, end_of_week),
         )
-        metrics_total = (
-            db.query(func.sum(Transactions.amount))
-            .filter(
-                Transactions.category != "Income",
-                extract("year", Transactions.date) == current_year,
-                extract("month", Transactions.date) == current_month,
-            )
-            .scalar()
-        ) or 0.0
-
-    elif current_index == 3:
-        raw_canvas_data = (
-            db.query(
-                Transactions.category, func.sum(Transactions.amount).label("total")
-            )
-            .filter(
-                Transactions.category != "Income",
-                extract("year", Transactions.date) == current_year,
-            )
-            .group_by(Transactions.category)
-            .all()
+        .group_by(Transactions.category)
+        .all()
+    )
+    weekly_total = (
+        db.query(func.sum(Transactions.amount))
+        .filter(
+            Transactions.category != "Income",
+            Transactions.date.between(start_of_week, end_of_week),
         )
-        metrics_total = (
-            db.query(func.sum(Transactions.amount))
-            .filter(
-                Transactions.category != "Income",
-                extract("year", Transactions.date) == current_year,
-            )
-            .scalar()
-        ) or 0.0
+        .scalar()
+    ) or 0.0
 
-    canvas_data = {
-        "labels": [row.category for row in raw_canvas_data],
-        "data": [float(row.total) for row in raw_canvas_data],
+    weekly_data = {
+        "labels": [row.category for row in raw_weekly_data],
+        "data": [float(row.total) for row in raw_weekly_data],
+    }
+
+    # --- 3. MONTHLY DATA ---
+    raw_monthly_data = (
+        db.query(Transactions.category, func.sum(Transactions.amount).label("total"))
+        .filter(
+            Transactions.category != "Income",
+            extract("year", Transactions.date) == current_year,
+            extract("month", Transactions.date) == current_month,
+        )
+        .group_by(Transactions.category)
+        .all()
+    )
+    monthly_total = (
+        db.query(func.sum(Transactions.amount))
+        .filter(
+            Transactions.category != "Income",
+            extract("year", Transactions.date) == current_year,
+            extract("month", Transactions.date) == current_month,
+        )
+        .scalar()
+    ) or 0.0
+
+    monthly_data = {
+        "labels": [row.category for row in raw_monthly_data],
+        "data": [float(row.total) for row in raw_monthly_data],
+    }
+
+    # --- 4. YEARLY DATA ---
+    raw_yearly_data = (
+        db.query(Transactions.category, func.sum(Transactions.amount).label("total"))
+        .filter(
+            Transactions.category != "Income",
+            extract("year", Transactions.date) == current_year,
+        )
+        .group_by(Transactions.category)
+        .all()
+    )
+    yearly_total = (
+        db.query(func.sum(Transactions.amount))
+        .filter(
+            Transactions.category != "Income",
+            extract("year", Transactions.date) == current_year,
+        )
+        .scalar()
+    ) or 0.0
+
+    yearly_data = {
+        "labels": [row.category for row in raw_yearly_data],
+        "data": [float(row.total) for row in raw_yearly_data],
     }
 
     db.close()
 
-    return rendered_wallets, total_balance, transaction_data, canvas_data, metrics_total
+    return (
+        rendered_wallets,
+        total_balance,
+        transaction_data,
+        daily_data,
+        daily_total,
+        weekly_data,
+        weekly_total,
+        monthly_data,
+        monthly_total,
+        yearly_data,
+        yearly_total,
+        current_index,
+    )
 
 
 @app.post("/api/render_wallet_page/{wallet_id}")
@@ -203,7 +218,7 @@ def render_wallet_page(wallet_id: str):
             raise HTTPException(status_code=404, detail="Wallet not found")
 
         # Update Last_Used
-        wallet.last_used = datetime.now()  # Update last_used timestamp
+        wallet.last_used = datetime.now()
         db.commit()
 
         # Get Wallet Name And Balance
@@ -224,10 +239,10 @@ def render_wallet_page(wallet_id: str):
                 Transactions.balance_after,
             )
             .order_by(Transactions.date.desc())
+            .limit(100)
             .all()
         )
 
-        # Refined list comprehension with safety checks
         transaction_data = [
             {
                 "date": tx.date.strftime("%Y-%m-%d") if tx.date else None,
@@ -241,120 +256,472 @@ def render_wallet_page(wallet_id: str):
             for tx in raw_transaction_data
         ]
 
-        # Get current year and month numbers
-        current_year = datetime.now().year
-        current_month = datetime.now().month
+        # Time References
+        current_day = date.today()
+        current_year = current_day.year
+        current_month = current_day.month
 
-        # Fetch Canvas Data filtered by wallet_id
-        raw_canvas_data = (
+        start_of_week = current_day - timedelta(days=current_day.weekday())
+        end_of_week = start_of_week + timedelta(days=6)
+        current_index = 2
+
+        # --- 1. DAILY DATA ---
+
+        raw_daily_data = (
             db.query(
                 Transactions.category, func.sum(Transactions.amount).label("total")
             )
             .filter(
-                Transactions.wallet_id == wallet_id,
                 Transactions.category != "Income",
+                Transactions.date == current_day,
+                Transactions.wallet_id == wallet_id,
+            )
+            .group_by(Transactions.category)
+            .all()
+        )
+        daily_total = (
+            db.query(func.sum(Transactions.amount))
+            .filter(
+                Transactions.category != "Income",
+                Transactions.date == current_day,
+                Transactions.wallet_id == wallet_id,
+            )
+            .scalar()
+        ) or 0.0
+
+        daily_data = {
+            "labels": [row.category for row in raw_daily_data],
+            "data": [float(row.total) for row in raw_daily_data],
+        }
+
+        # --- 2. WEEKLY DATA ---
+
+        raw_weekly_data = (
+            db.query(
+                Transactions.category, func.sum(Transactions.amount).label("total")
+            )
+            .filter(
+                Transactions.category != "Income",
+                Transactions.date.between(start_of_week, end_of_week),
+                Transactions.wallet_id == wallet_id,
+            )
+            .group_by(Transactions.category)
+            .all()
+        )
+        weekly_total = (
+            db.query(func.sum(Transactions.amount))
+            .filter(
+                Transactions.category != "Income",
+                Transactions.wallet_id == wallet_id,
+                Transactions.date.between(start_of_week, end_of_week),
+            )
+            .scalar()
+        ) or 0.0
+
+        weekly_data = {
+            "labels": [row.category for row in raw_weekly_data],
+            "data": [float(row.total) for row in raw_weekly_data],
+        }
+
+        # --- 3. MONTHLY DATA ---
+
+        raw_monthly_data = (
+            db.query(
+                Transactions.category, func.sum(Transactions.amount).label("total")
+            )
+            .filter(
+                Transactions.category != "Income",
+                Transactions.wallet_id == wallet_id,
                 extract("year", Transactions.date) == current_year,
                 extract("month", Transactions.date) == current_month,
             )
             .group_by(Transactions.category)
             .all()
         )
-
-        # Build canvas data with safety checks
-        canvas_data = {
-            "labels": [row.category for row in raw_canvas_data]
-            if raw_canvas_data
-            else [],
-            "data": [
-                float(row.total) if row.total is not None else 0.0
-                for row in raw_canvas_data
-            ]
-            if raw_canvas_data
-            else [],
-        }
-
-        # Fetch Monthly Total
         monthly_total = (
             db.query(func.sum(Transactions.amount))
             .filter(
-                Transactions.wallet_id == wallet_id,
                 Transactions.category != "Income",
+                Transactions.wallet_id == wallet_id,
                 extract("year", Transactions.date) == current_year,
                 extract("month", Transactions.date) == current_month,
             )
             .scalar()
         ) or 0.0
 
-        # Fetch Line Chart Data
-        # 1. Fetch Raw Expense Data (Non-Income categories)
-        raw_expense_data = (
+        monthly_data = {
+            "labels": [row.category for row in raw_monthly_data],
+            "data": [float(row.total) for row in raw_monthly_data],
+        }
+
+        # --- 4. YEARLY DATA ---
+
+        raw_yearly_data = (
             db.query(
-                extract("month", Transactions.date).label("month"),
-                func.sum(Transactions.amount).label("total"),
+                Transactions.category, func.sum(Transactions.amount).label("total")
             )
             .filter(
-                Transactions.wallet_id == wallet_id,
                 Transactions.category != "Income",
                 extract("year", Transactions.date) == current_year,
-            )
-            .group_by(extract("month", Transactions.date))
-            .order_by(extract("month", Transactions.date))
-            .all()
-        )
-
-        # 2. Fetch Raw Income Data (Income category only)
-        raw_income_data = (
-            db.query(
-                extract("month", Transactions.date).label("month"),
-                func.sum(Transactions.amount).label("total"),
-            )
-            .filter(
                 Transactions.wallet_id == wallet_id,
-                Transactions.category == "Income",
-                extract("year", Transactions.date) == current_year,
             )
-            .group_by(extract("month", Transactions.date))
-            .order_by(extract("month", Transactions.date))
+            .group_by(Transactions.category)
             .all()
         )
+        yearly_total = (
+            db.query(func.sum(Transactions.amount))
+            .filter(
+                Transactions.category != "Income",
+                extract("year", Transactions.date) == current_year,
+                Transactions.wallet_id == wallet_id,
+            )
+            .scalar()
+        ) or 0.0
 
-        # 3. Convert query results into dictionaries for quick month lookup
-        expense_dict = {int(row.month): float(row.total) for row in raw_expense_data}
-        income_dict = {int(row.month): float(row.total) for row in raw_income_data}
+        yearly_data = {
+            "labels": [row.category for row in raw_yearly_data],
+            "data": [float(row.total) for row in raw_yearly_data],
+        }
 
-        # 4. Force all 12 months (1 through 12) to ensure every month is always shown
+        # ==========================================
+        # LINE CHART DATASETS & TIME PERIOD STRUCTURES
+        # ==========================================
+        def calculate_comparison(current_val, previous_val):
+            if previous_val == 0:
+                percentage = (
+                    100.0 if current_val > 0 else (0.0 if current_val == 0 else -100.0)
+                )
+                nature = (
+                    "Positive"
+                    if current_val > 0
+                    else ("Negative" if current_val < 0 else "Neutral")
+                )
+            else:
+                raw_percentage = (
+                    (current_val - previous_val) / abs(previous_val)
+                ) * 100
+                percentage = round(abs(raw_percentage), 2)
+
+                if raw_percentage > 0:
+                    nature = "Positive"
+                elif raw_percentage < 0:
+                    nature = "Negative"
+                else:
+                    nature = "Neutral"
+
+            return percentage, nature
+
+        # 1. DAILY LINE DATA
+        last_day_of_month = calendar.monthrange(current_year, current_month)[1]
+        days_in_month = list(range(1, last_day_of_month + 1))
+        day_labels = [str(d) for d in days_in_month]
+
+        def fetch_daily_line_data(category_condition):
+            raw_data = (
+                db.query(
+                    extract("day", Transactions.date).label("day"),
+                    func.sum(Transactions.amount).label("total"),
+                )
+                .filter(
+                    Transactions.wallet_id == wallet_id,
+                    category_condition,
+                    extract("year", Transactions.date) == current_year,
+                    extract("month", Transactions.date) == current_month,
+                )
+                .group_by(extract("day", Transactions.date))
+                .all()
+            )
+            data_dict = {int(row.day): float(row.total) for row in raw_data}
+            return [data_dict.get(d, 0.0) for d in days_in_month]
+
+        daily_expense = fetch_daily_line_data(Transactions.category != "Income")
+        daily_income = fetch_daily_line_data(Transactions.category == "Income")
+        daily_savings = [
+            round(inc - exp, 2) for inc, exp in zip(daily_income, daily_expense)
+        ]
+
+        daily_expense_data = {"labels": day_labels, "data": daily_expense}
+        daily_income_data = {"labels": day_labels, "data": daily_income}
+        daily_savings_data = {"labels": day_labels, "data": daily_savings}
+
+        day_number = current_day.day
+        today_index = (
+            days_in_month.index(day_number)
+            if day_number in days_in_month
+            else len(days_in_month) - 1
+        )
+        previous_index = max(0, today_index - 1)
+
+        curr_inc = daily_income[today_index]
+        prev_inc = daily_income[previous_index]
+        daily_income_num, daily_income_nature = calculate_comparison(curr_inc, prev_inc)
+
+        curr_exp = daily_expense[today_index]
+        prev_exp = daily_expense[previous_index]
+        daily_expense_num, daily_expense_nature = calculate_comparison(
+            curr_exp, prev_exp
+        )
+
+        curr_sav = daily_savings[today_index]
+        prev_sav = daily_savings[previous_index]
+        daily_savings_num, daily_savings_nature = calculate_comparison(
+            curr_sav, prev_sav
+        )
+
+        # 3. Final Output Arrays for UI Display
+        dailyNumber = [daily_income_num, daily_expense_num, daily_savings_num]
+        dailyNature = [daily_income_nature, daily_expense_nature, daily_savings_nature]
+
+        # 2. WEEKLY LINE DATA (Universal Python-calculated ISO week fallback)
+        weeks_in_year = list(range(1, 53))
+        week_labels = [f"Week {w}" for w in weeks_in_year]
+
+        def fetch_weekly_line_data(category_condition):
+            raw_data = (
+                db.query(Transactions.date, Transactions.amount)
+                .filter(
+                    Transactions.wallet_id == wallet_id,
+                    category_condition,
+                    extract("year", Transactions.date) == current_year,
+                )
+                .all()
+            )
+            data_dict = {w: 0.0 for w in weeks_in_year}
+            for row in raw_data:
+                if row.date:
+                    week_num = row.date.isocalendar()[1]
+                    if week_num in data_dict:
+                        data_dict[week_num] += float(row.amount)
+            return [data_dict[w] for w in weeks_in_year]
+
+        weekly_expense = fetch_weekly_line_data(Transactions.category != "Income")
+        weekly_income = fetch_weekly_line_data(Transactions.category == "Income")
+        weekly_savings = [
+            round(inc - exp, 2) for inc, exp in zip(weekly_income, weekly_expense)
+        ]
+
+        weekly_expense_data = {"labels": week_labels, "data": weekly_expense}
+        weekly_income_data = {"labels": week_labels, "data": weekly_income}
+        weekly_savings_data = {"labels": week_labels, "data": weekly_savings}
+
+        week_number = current_day.isocalendar()[1]
+        current_week_number = current_day.isocalendar()[1]
+
+        current_week_index = (
+            weeks_in_year.index(current_week_number)
+            if current_week_number in weeks_in_year
+            else len(weeks_in_year) - 1
+        )
+
+        previous_week_index = max(0, current_week_index - 1)
+
+        # 1. Extract Current Week and Previous Week values from your weekly lists
+        curr_inc = weekly_income[current_week_index]
+        prev_inc = weekly_income[previous_week_index]
+        weekly_income_num, weekly_income_nature = calculate_comparison(
+            curr_inc, prev_inc
+        )
+
+        curr_exp = weekly_expense[current_week_index]
+        prev_exp = weekly_expense[previous_week_index]
+        weekly_expense_num, weekly_expense_nature = calculate_comparison(
+            curr_exp, prev_exp
+        )
+
+        curr_sav = weekly_savings[current_week_index]
+        prev_sav = weekly_savings[previous_week_index]
+        weekly_savings_num, weekly_savings_nature = calculate_comparison(
+            curr_sav, prev_sav
+        )
+
+        # 2. Final Output Arrays for UI Display (Weekly)
+        weeklyNumber = [weekly_income_num, weekly_expense_num, weekly_savings_num]
+        weeklyNature = [
+            weekly_income_nature,
+            weekly_expense_nature,
+            weekly_savings_nature,
+        ]
+
+        # 3. MONTHLY LINE DATA
         all_months = list(range(1, 13))
         month_labels = [calendar.month_name[m] for m in all_months]
 
-        # 5. Build Expense Data Set
-        expense_data = {
-            "labels": month_labels,
-            "data": [expense_dict.get(m, 0.0) for m in all_months],
-        }
+        def fetch_monthly_line_data(category_condition):
+            raw_data = (
+                db.query(
+                    extract("month", Transactions.date).label("month"),
+                    func.sum(Transactions.amount).label("total"),
+                )
+                .filter(
+                    Transactions.wallet_id == wallet_id,
+                    category_condition,
+                    extract("year", Transactions.date) == current_year,
+                )
+                .group_by(extract("month", Transactions.date))
+                .all()
+            )
+            data_dict = {int(row.month): float(row.total) for row in raw_data}
+            return [data_dict.get(m, 0.0) for m in all_months]
 
-        # 6. Build Income Data Set
-        income_data = {
-            "labels": month_labels,
-            "data": [income_dict.get(m, 0.0) for m in all_months],
-        }
+        monthly_expense = fetch_monthly_line_data(Transactions.category != "Income")
+        monthly_income = fetch_monthly_line_data(Transactions.category == "Income")
+        monthly_savings = [
+            round(inc - exp, 2) for inc, exp in zip(monthly_income, monthly_expense)
+        ]
 
-        # 7. Build Savings Data Set (Income minus Expense per month)
-        savings_data = {
-            "labels": month_labels,
-            "data": [
-                round(income_dict.get(m, 0.0) - expense_dict.get(m, 0.0), 2)
-                for m in all_months
-            ],
-        }
-        # Return a unified list response containing everything
+        monthly_expense_data = {"labels": month_labels, "data": monthly_expense}
+        monthly_income_data = {"labels": month_labels, "data": monthly_income}
+        monthly_savings_data = {"labels": month_labels, "data": monthly_savings}
+
+        current_month_number = current_day.month
+
+        # Find today's month index in the list
+        current_month_index = (
+            all_months.index(current_month_number)
+            if current_month_number in all_months
+            else len(all_months) - 1
+        )
+
+        # Find the previous month's index safely
+        previous_month_index = max(0, current_month_index - 1)
+
+        # Extract Current Month and Previous Month values from your monthly lists
+        curr_inc = monthly_income[current_month_index]
+        prev_inc = monthly_income[previous_month_index]
+        monthly_income_num, monthly_income_nature = calculate_comparison(
+            curr_inc, prev_inc
+        )
+
+        curr_exp = monthly_expense[current_month_index]
+        prev_exp = monthly_expense[previous_month_index]
+        monthly_expense_num, monthly_expense_nature = calculate_comparison(
+            curr_exp, prev_exp
+        )
+
+        curr_sav = monthly_savings[current_month_index]
+        prev_sav = monthly_savings[previous_month_index]
+        monthly_savings_num, monthly_savings_nature = calculate_comparison(
+            curr_sav, prev_sav
+        )
+
+        # Final Output Arrays for UI Display (Monthly)
+        monthlyNumber = [monthly_income_num, monthly_expense_num, monthly_savings_num]
+        monthlyNature = [
+            monthly_income_nature,
+            monthly_expense_nature,
+            monthly_savings_nature,
+        ]
+
+        # 4. YEARLY LINE DATA
+        start_decade = (current_year // 10) * 10
+        decade_years = list(range(start_decade, start_decade + 10))
+        year_labels = [str(y) for y in decade_years]
+
+        def fetch_yearly_line_data(category_condition):
+            raw_data = (
+                db.query(
+                    extract("year", Transactions.date).label("year"),
+                    func.sum(Transactions.amount).label("total"),
+                )
+                .filter(
+                    Transactions.wallet_id == wallet_id,
+                    category_condition,
+                    extract("year", Transactions.date).between(
+                        start_decade, start_decade + 9
+                    ),
+                )
+                .group_by(extract("year", Transactions.date))
+                .all()
+            )
+            data_dict = {int(row.year): float(row.total) for row in raw_data}
+            return [data_dict.get(y, 0.0) for y in decade_years]
+
+        yearly_expense = fetch_yearly_line_data(Transactions.category != "Income")
+        yearly_income = fetch_yearly_line_data(Transactions.category == "Income")
+        yearly_savings = [
+            round(inc - exp, 2) for inc, exp in zip(yearly_income, yearly_expense)
+        ]
+
+        yearly_expense_data = {"labels": year_labels, "data": yearly_expense}
+        yearly_income_data = {"labels": year_labels, "data": yearly_income}
+        yearly_savings_data = {"labels": year_labels, "data": yearly_savings}
+
+        current_year_number = current_day.year
+
+        # Find the current year's index inside this decade block
+        current_decade_index = (
+            decade_years.index(current_year_number)
+            if current_year_number in decade_years
+            else len(decade_years) - 1
+        )
+
+        # Find the previous year's index safely within the decade list
+        previous_decade_index = max(0, current_decade_index - 1)
+        # Extract Current and Previous values from your yearly lists using the decade indexes
+        curr_inc = yearly_income[current_decade_index]
+        prev_inc = yearly_income[previous_decade_index]
+        decade_income_num, decade_income_nature = calculate_comparison(
+            curr_inc, prev_inc
+        )
+
+        curr_exp = yearly_expense[current_decade_index]
+        prev_exp = yearly_expense[previous_decade_index]
+        decade_expense_num, decade_expense_nature = calculate_comparison(
+            curr_exp, prev_exp
+        )
+
+        curr_sav = yearly_savings[current_decade_index]
+        prev_sav = yearly_savings[previous_decade_index]
+        decade_savings_num, decade_savings_nature = calculate_comparison(
+            curr_sav, prev_sav
+        )
+
+        # Final Output Arrays for UI Display (Decade/Yearly view)
+        yearlyNumber = [decade_income_num, decade_expense_num, decade_savings_num]
+        yearlyNature = [
+            decade_income_nature,
+            decade_expense_nature,
+            decade_savings_nature,
+        ]
+
+        # Return all structured datasets and values
         return [
             wallet_data,
-            canvas_data,
             transaction_data,
+            current_index,
+            # Daily
+            daily_data,
+            daily_expense_data,
+            daily_income_data,
+            daily_savings_data,
+            daily_total,
+            # Weekly
+            weekly_data,
+            weekly_expense_data,
+            weekly_income_data,
+            weekly_savings_data,
+            weekly_total,
+            # Monthly
+            monthly_data,
+            monthly_expense_data,
+            monthly_income_data,
+            monthly_savings_data,
             monthly_total,
-            expense_data,
-            income_data,
-            savings_data,
+            # Yearly
+            yearly_data,
+            yearly_expense_data,
+            yearly_income_data,
+            yearly_savings_data,
+            yearly_total,
+            # Percentage
+            dailyNumber,
+            dailyNature,
+            weeklyNumber,
+            weeklyNature,
+            monthlyNumber,
+            monthlyNature,
+            yearlyNumber,
+            yearlyNature,
         ]
 
     finally:
