@@ -41,10 +41,13 @@ let metricsData = {
     nature: [],
   },
 };
+
+let walletId = "";
+
 async function fetchAndRenderWalletPage() {
   // 1. Get the wallet ID from the URL
   const urlParams = new URLSearchParams(window.location.search);
-  const walletId = urlParams.get("id");
+  walletId = urlParams.get("id");
 
   //2. Post the wallet ID to your Python API
   try {
@@ -594,4 +597,79 @@ createTransaction.addEventListener("click", (e) => {
 
   dialog.showModal();
   document.getElementById("transaction-tag").focus();
+});
+
+// =================== Income Function =================== //
+const incomeDialog = document.getElementById("income-dialog");
+const incomeForm = document.getElementById("income-form");
+const incDateInput = document.getElementById("income-date");
+const incTagInput = document.getElementById("income-tag");
+const incTagWarning = document.getElementById("inc-tag-warning-text");
+const incAmtInput = document.getElementById("income-amt");
+const incAmtWarning = document.getElementById("inc-amt-warning-text");
+
+incomeForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  console.log(walletId);
+  const date = incDateInput.value;
+  const tag = incTagInput.value
+    .trim() // Remove spaces from the very beginning and end
+    .replace(/\s+/g, " ") // Replace multiple consecutive spaces in between words with a single space
+    .toLowerCase() // Convert everything to lowercase first
+    .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize the first letter of every word
+  const amount = incAmtInput.value;
+
+  if (tag === "") {
+    incTagWarning.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
+    incAmtWarning.innerHTML = "";
+
+    return;
+  }
+  if (amount === "") {
+    incAmtWarning.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
+    incTagWarning.innerHTML = "";
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      document.getElementById("login-dialog").showModal();
+      return;
+    }
+
+    const response = await fetch("http://127.0.0.1:8000/api/add-income", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+      body: JSON.stringify({
+        date: date,
+        tag: tag,
+        amount: parseFloat(amount),
+        wallet_id: walletId,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Failed to add income:", data.detail);
+      return;
+    }
+
+    // Success: Reset form and close dialog
+    incAmtWarning.innerHTML = "";
+    incTagWarning.innerHTML = "";
+    incomeForm.reset();
+    incomeDialog.close();
+    fetchAndRenderWalletPage();
+
+    // Optionally refresh your UI/transactions list here
+  } catch (error) {
+    console.error("Error submitting income:", error);
+  }
 });
