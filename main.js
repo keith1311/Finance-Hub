@@ -257,11 +257,19 @@ function renderTransactionTable(transactionData) {
       // Add a class name for your row styling (e.g., flex layout matching your headers)
       rowDiv.className = "table-row-item";
 
+      let amt = "";
+
+      if (tx.category === "Income") {
+        amt = `+ RM ${tx.amount.toFixed(2)}`;
+      } else {
+        amt = `- RM ${tx.amount.toFixed(2)}`;
+      }
+
       rowDiv.innerHTML = `
                 <div>${tx.date}</div>
                 <div>${tx.tags || "-"}</div>
                 <div>${tx.category}</div>
-                <div>RM ${tx.amount.toFixed(2)}</div>
+                <div>${amt}</div>
                 <div>${tx.wallet_name || tx.wallet_id}</div>
             `;
 

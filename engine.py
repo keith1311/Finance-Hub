@@ -1275,9 +1275,7 @@ def add_income(data: AddIncome, authorization: str = Header(None)):
     try:
         # 1. Verify the token to get the user_id
         if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(
-                status_code=401, detail="Invalid or missing authorization header."
-            )
+            raise HTTPException(status_code=401, detail="Invalid request.")
 
         token = authorization.split(" ")[1]
         user_id = verify_access_token(token=token)
@@ -1310,6 +1308,64 @@ def add_income(data: AddIncome, authorization: str = Header(None)):
         db.refresh(new_transaction)
 
         return {"message": "Income added successfully"}
+
+    except HTTPException as he:
+        raise he
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+class CreateTransaction(BaseModel):
+    date: date
+    tag: str
+    category: str
+    amount: float
+    wallet_id: str
+
+
+@app.post("/api/create-transaction")
+def create_transaction(data: CreateTransaction, authorization: str = Header(None)):
+    db = SessionLocal()
+    try:
+        # 1. Verify the token to get the user_id
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid request.")
+
+        token = authorization.split(" ")[1]
+        user_id = verify_access_token(token=token)
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User not found.")
+
+        target_wallet = db.query(Wallet).filter(Wallet.id == data.wallet_id).first()
+        if not target_wallet:
+            raise HTTPException(status_code=404, detail="Wallet not found.")
+
+        current_time = datetime.now().time()
+        transaction_datetime = datetime.combine(data.date, current_time)
+
+        # Updating Wallet Balance
+        balance_after = target_wallet.balance + data.amount
+        target_wallet.balance = balance_after
+
+        # Adding Transaction
+        new_transaction = Transactions(
+            date=transaction_datetime,
+            tags=data.tag,
+            category=data.category,
+            amount=data.amount,
+            wallet_id=data.wallet_id,
+            balance_after=balance_after,
+        )
+
+        db.add(new_transaction)
+        db.commit()
+        db.refresh(new_transaction)
+
+        return {"message": "Transaction created successfully"}
 
     except HTTPException as he:
         raise he

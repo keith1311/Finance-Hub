@@ -133,11 +133,19 @@ function renderTransactionTable(transactionData) {
       // Add a class name for your row styling (e.g., flex layout matching your headers)
       rowDiv.className = "table-row-item";
 
+      let amt = "";
+
+      if (tx.category === "Income") {
+        amt = `+ RM ${tx.amount.toFixed(2)}`;
+      } else {
+        amt = `- RM ${tx.amount.toFixed(2)}`;
+      }
+
       rowDiv.innerHTML = `
                 <div>${tx.date}</div>
                 <div>${tx.tags || "-"}</div>
                 <div>${tx.category}</div>
-                <div>RM ${tx.amount.toFixed(2)}</div>
+                <div>${amt}</div>
                 <div>RM ${tx.balance.toFixed(2)}</div>
             `;
 
@@ -610,7 +618,7 @@ const incAmtWarning = document.getElementById("inc-amt-warning-text");
 
 incomeForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  console.log(walletId);
+
   const date = incDateInput.value;
   const tag = incTagInput.value
     .trim() // Remove spaces from the very beginning and end
@@ -671,5 +679,83 @@ incomeForm.addEventListener("submit", async (event) => {
     // Optionally refresh your UI/transactions list here
   } catch (error) {
     console.error("Error submitting income:", error);
+  }
+});
+
+// =================== Transaction Function =================== //
+const transactionDialog = document.getElementById("transaction-dialog");
+const transactionForm = document.getElementById("transaction-form");
+const tranDateInput = document.getElementById("transaction-date");
+const tranTagInput = document.getElementById("transaction-tag");
+const tranTagWarning = document.getElementById("tran-tag-warning-text");
+const tranCatInput = document.getElementById("transaction-cat");
+const tranAmtInput = document.getElementById("transaction-amt");
+const tranAmtWarning = document.getElementById("tran-amt-warning-text");
+
+transactionForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const date = tranDateInput.value;
+  const tag = tranTagInput.value
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+  const category = tranCatInput.value;
+  const amount = tranAmtInput.value;
+
+  if (tag === "") {
+    tranTagWarning.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
+    tranAmtWarning.innerHTML = "";
+    return;
+  }
+  if (amount === "") {
+    tranAmtWarning.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
+    tranTagWarning.innerHTML = "";
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      document.getElementById("login-dialog").showModal();
+      return;
+    }
+
+    const response = await fetch(
+      "http://127.0.0.1:8000/api/create-transaction",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token,
+        },
+        body: JSON.stringify({
+          date: date,
+          tag: tag,
+          category: category, // <--- Fixed: Changed semicolon to comma
+          amount: parseFloat(amount),
+          wallet_id: walletId,
+        }),
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Failed to add transaction:", data.detail);
+      return;
+    }
+
+    // Success: Reset form and close dialog
+    tranAmtWarning.innerHTML = "";
+    tranTagWarning.innerHTML = "";
+    transactionForm.reset();
+    transactionDialog.close();
+    fetchAndRenderWalletPage();
+  } catch (error) {
+    console.error("Error submitting transaction:", error);
   }
 });
