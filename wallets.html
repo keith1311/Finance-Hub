@@ -311,7 +311,6 @@
               document.getElementById('transaction-cat').value = 'Food';
               document.getElementById('transaction-amt').value = '';
               document.getElementById('tran-tag-warning-text').innerHTML = '';
-              document.getElementById('tran-cat-warning-text').innerHTML = '';
               document.getElementById('tran-amt-warning-text').innerHTML = '';
               document.getElementById('transaction-dialog').close();
             "
@@ -325,6 +324,189 @@
           </button>
         </div>
       </form>
+    </dialog>
+
+    <!-- Settings Dialog Box -->
+    <dialog class="dialog-box" id="settings-dialog">
+      <form id="settings-form" method="dialog">
+        <h3 id="settings-title">Settings</h3>
+
+        <!-- Round PFP and Email Label Section -->
+        <div class="input-group">
+          <img src="" alt="Profile Picture" class="pfp" id="settings-pfp" />
+          <div class="email-container">
+            <div class="inner-email">Email Address</div>
+            <h6 class="inner-email" id="settings-email">user@example.com</h6>
+          </div>
+        </div>
+
+        <!-- Password Buttons Row -->
+        <div class="dialog-btn" style="margin-right: 30px; margin-bottom: 20px">
+          <button
+            class="btn-save"
+            type="button"
+            style="width: 100%; font-size: 12px"
+            onclick="document.getElementById('change-dialog').showModal()"
+          >
+            <i class="fa-solid fa-retweet"></i>&nbsp;Change Password
+          </button>
+          <button
+            class="btn-save"
+            type="button"
+            style="width: 100%; font-size: 12px"
+            id="open-manage"
+          >
+            <i class="fa-solid fa-key"></i>&nbsp;Manage Passwords
+          </button>
+        </div>
+
+        <!-- Dropdown Menu: Change Theme -->
+        <div class="input-group">
+          <label for="settings-theme">Theme</label>
+          <select
+            id="settings-theme"
+            name="settings-theme"
+            class="dropdown-cat"
+          >
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+          </select>
+        </div>
+
+        <!-- Dropdown Menu: Change Metrics (Default is Monthly) -->
+        <div class="input-group">
+          <label for="settings-metrics">Metrics Interval</label>
+          <select
+            id="settings-metrics"
+            name="settings-metrics"
+            class="dropdown-cat"
+          >
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly" selected>Monthly</option>
+            <option value="yearly">Yearly</option>
+          </select>
+        </div>
+
+        <!-- Log Out Button -->
+        <div
+          class="dialog-btn"
+          style="margin-top: 2px; margin-bottom: 12px; justify-content: center"
+        >
+          <button
+            class="btn-dlt"
+            type="button"
+            width="100%"
+            onclick="
+              localStorage.removeItem('authToken');
+              document.getElementById('login-dialog').showModal();
+            "
+          >
+            <i class="fa-solid fa-right-from-bracket"></i>&nbsp;Log Out
+          </button>
+          <button class="btn-save" id="apply-changes" width="100%">
+            <i class="fa-solid fa-floppy-disk"></i>&nbsp;Apply
+          </button>
+        </div>
+
+        <!-- Whitelist Container at the very bottom -->
+        <div class="input-group" id="whitelist-box">
+          <label for="whitelist-email" class="whitelist-item"
+            >Grant Permission</label
+          >
+          <div>
+            <input
+              type="email"
+              id="whitelist-email"
+              name="whitelist-email"
+              placeholder="example@gmail.com"
+              class="whitelist-item"
+            />
+            <div class="dialog-btn">
+              <button class="btn-save" id="whitelist-btn" type="button">
+                <i class="fa-solid fa-plus"></i>&nbsp;Whitelist
+              </button>
+              <button class="close">
+                <i
+                  class="fa-solid fa-circle-xmark"
+                  style="color: rgb(210, 5, 5)"
+                ></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </dialog>
+    <!-- ====================== Change PW Dialog ====================== -->
+    <dialog class="dialog-box" id="change-dialog">
+      <form id="change-form" method="dialog">
+        <h3>Change your account password</h3>
+
+        <div class="input-group">
+          <label for="old-password">Enter old password</label>
+          <input
+            type="password"
+            id="old-password"
+            name="old-password"
+            placeholder="Enter Password Here..."
+          />
+          <p class="warning-text" id="old-warning-text"></p>
+        </div>
+
+        <div class="input-group">
+          <label for="new-password">Enter new password</label>
+          <input
+            type="password"
+            id="new-password"
+            name="new-password"
+            placeholder="Enter Password Here..."
+          />
+          <p class="warning-text" id="new-warning-text"></p>
+        </div>
+
+        <div class="dialog-btn">
+          <button
+            onclick="
+              document.getElementById('old-password').value = '';
+              document.getElementById('old-warning-text').innerHTML = '';
+              document.getElementById('new-password').value = '';
+              document.getElementById('new-warning-text').innerHTML = '';
+              document.getElementById('change-dialog').close();
+            "
+            class="btn-cancel"
+            type="button"
+          >
+            <i class="fa-solid fa-xmark"></i> Cancel
+          </button>
+          <button class="btn-save" type="submit">
+            <i class="fa-solid fa-retweet"></i>&nbsp;Change Passsword
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- ====================== Manage PW Dialog ====================== -->
+    <dialog class="dialog-box" id="manage-dialog">
+      <h3 style="text-align: center; margin-bottom: 20px">
+        Manage Wallet Passwords
+      </h3>
+      <button
+        class="password-close"
+        onclick="document.getElementById('manage-dialog').close()"
+      >
+        <i class="fa-solid fa-circle-xmark" style="color: rgb(210, 5, 5)"></i>
+      </button>
+      <div class="password-card">
+        <div class="password-headers">
+          <div>Wallet</div>
+          <div>Password</div>
+          <div>View</div>
+        </div>
+        <div style="height: 1px; background: #222633; margin: 6px 0"></div>
+        <div class="password-scroll">
+          <div class="password-details" id="password-details"></div>
+        </div>
+      </div>
     </dialog>
   </body>
 </html>

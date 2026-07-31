@@ -19,6 +19,31 @@
   --text-subtle: #cbd3da; /* Secondary table row text */
   --text-label: #cbd5e1; /* Form input labels and secondary text */
   --scrollbar-thumb: #3a4150; /* Scrollbar thumb color */
+  --chart-bg: linear-gradient(180deg, #0c0f12, #0b0e11);
+}
+
+[data-theme="light"] {
+  --bg: #fff5f7; /* Really, really light pink background */
+  --card: #ffffff; /* Clean white card background */
+  --inner: #ffe3e8; /* Soft pink tint for inner containers */
+  --accent: #ffcef4; /* Vibrant pink/purple accent */
+  --muted: #64748b; /* Muted gray text */
+  --text: #1e293b; /* Dark slate main text for high contrast */
+
+  /* Light Mode UI Components */
+  --input-bg: #ffffff;
+  --input-border: #f472b6; /* Soft pink border for inputs */
+  --dialog-bg: #ffffff;
+  --button-muted: #f1f5f9;
+  --button-hover: #e2e8f0;
+  --danger: #ef4444;
+  --warning: #dc2626;
+  --table-border: #fce7f3; /* Very light pink table borders */
+  --dropdown-border: #f472b6;
+  --text-subtle: #475569;
+  --text-label: #334155;
+  --scrollbar-thumb: #f472b6;
+  --chart-bg: linear-gradient(180deg, #ffbff3, #ffeefe);
 }
 
 * {
@@ -307,7 +332,7 @@ body {
   gap: 16px;
   align-items: center;
   padding: 8px 16px;
-  border-bottom: 1px solid var(--table-border);
+  border-bottom: 0px;
   animation: slideInFromTop 1.2s ease-out;
 }
 
@@ -397,7 +422,7 @@ body {
   min-height: 220px;
   width: 100%;
   border-radius: 8px;
-  background: linear-gradient(180deg, #0c0f12, #0b0e11);
+  background: var(--chart-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -664,5 +689,67 @@ select.dropdown-cat option {
 }
 
 .close i {
+  font-size: 32px;
+}
+
+.password-close {
+  position: absolute;
+  top: 1px;
+  right: -2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.password-close i {
   font-size: 32px; /* Adjust this to make the icon bigger or smaller safely */
+}
+
+.password-card {
+  background: var(--inner);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.password-headers {
+  display: flex;
+  gap: 16px;
+  color: var(--muted);
+  font-weight: 600;
+  padding: 6px 16px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  background: var(--inner);
+  z-index: 1;
+}
+
+.password-headers div {
+  flex: 1;
+  text-align: center;
+}
+
+.password-scroll {
+  flex-grow: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-top: 8px;
+  min-height: 0;
+  scrollbar-color: var(--scrollbar-thumb) var(--card);
+  scrollbar-width: thin;
+  max-height: 500px;
+}
+
+.password_details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0;
+  color: var(--text-subtle);
 }

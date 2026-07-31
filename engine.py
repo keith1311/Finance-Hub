@@ -137,6 +137,10 @@ def render_main_page(token: str):
 
     # Fetch Canvas Data
     current_day = date.today()
+    start_of_day = datetime.combine(
+        current_day, datetime.min.time()
+    )  # 2026-07-31 00:00:00
+    end_of_day = start_of_day + timedelta(days=1)  # 2026-08-01 00:00:00
     current_year = current_day.year
     current_month = current_day.month
 
@@ -147,14 +151,14 @@ def render_main_page(token: str):
     # Get Metrics Index (Hardcoded to 2 for now, but you can pass this via query params later)
 
     # --- 1. DAILY DATA ---
-    # --- 1. DAILY DATA ---
     raw_daily_data = (
         db.query(Transactions.category, func.sum(Transactions.amount).label("total"))
         .join(Wallet, Transactions.wallet_id == Wallet.id)
         .filter(
             Wallet.user_id == user_id,
             Transactions.category != "Income",
-            Transactions.date == current_day,
+            Transactions.date >= start_of_day,
+            Transactions.date < end_of_day,
         )
         .group_by(Transactions.category)
         .all()
@@ -164,7 +168,8 @@ def render_main_page(token: str):
         .join(Wallet, Transactions.wallet_id == Wallet.id)
         .filter(
             Transactions.category != "Income",
-            Transactions.date == current_day,
+            Transactions.date >= start_of_day,
+            Transactions.date < end_of_day,
             Wallet.user_id == user_id,
         )
         .scalar()
@@ -330,6 +335,10 @@ def render_wallet_page(wallet_id: str):
         current_day = date.today()
         current_year = current_day.year
         current_month = current_day.month
+        start_of_day = datetime.combine(
+            current_day, datetime.min.time()
+        )  # 2026-07-31 00:00:00
+        end_of_day = start_of_day + timedelta(days=1)  # 2026-08-01 00:00:00
 
         start_of_week = current_day - timedelta(days=current_day.weekday())
         end_of_week = start_of_week + timedelta(days=6)
@@ -342,7 +351,8 @@ def render_wallet_page(wallet_id: str):
             )
             .filter(
                 Transactions.category != "Income",
-                Transactions.date == current_day,
+                Transactions.date >= start_of_day,
+                Transactions.date < end_of_day,
                 Transactions.wallet_id == wallet_id,
             )
             .group_by(Transactions.category)
@@ -352,7 +362,8 @@ def render_wallet_page(wallet_id: str):
             db.query(func.sum(Transactions.amount))
             .filter(
                 Transactions.category != "Income",
-                Transactions.date == current_day,
+                Transactions.date >= start_of_day,
+                Transactions.date < end_of_day,
                 Transactions.wallet_id == wallet_id,
             )
             .scalar()
@@ -1373,5 +1384,89 @@ def create_transaction(data: CreateTransaction, authorization: str = Header(None
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+class ChangePassword(BaseModel):
+    oldPassword: str
+    newPassword: str
+
+
+@app.post("/api/change-password")
+def change_password(data: ChangePassword, authorization: str = Header(None)):
+    db = SessionLocal()
+    try:
+        # 1. Verify the token to get the user_id
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid request.")
+
+        token = authorization.split(" ")[1]
+        user_id = verify_access_token(token=token)
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User not found.")
+
+        user = db.query(Users).filter(Users.user_id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found in database.")
+
+        if not verify_password(data.oldPassword, user.password):
+            raise HTTPException(
+                status_code=400, detail="Incorrect password. Please try again."
+            )
+
+        user.password = pwd_context.hash(data.newPassword)
+        db.commit()
+
+        return {"message": "Password updated successfully"}
+
+    except HTTPException as he:
+        raise he
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        db.close()
+
+
+@app.get(
+    "/api/render-passwords"
+)  # Changed to GET since you are fetching/rendering data
+def render_passwords(authorization: str = Header(None)):
+    db = SessionLocal()
+    try:
+        # 1. Verify the token to get the user_id
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid request.")
+
+        token = authorization.split(" ")[1]
+        user_id = verify_access_token(token=token)
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User not found.")
+
+        # Optional: If wallets belong to a specific user, add user_id filter:
+        # locked_wallet = db.query(Wallet).filter(Wallet.user_id == user_id, Wallet.password != "").all()
+        locked_wallet = db.query(Wallet).filter(Wallet.password != "").all()
+
+        # 2. Build the list of dictionaries
+        passwords_list = []
+        for wallet in locked_wallet:
+            passwords_list.append(
+                {
+                    "name": wallet.name,  # Adjust property name if your column is different (e.g., wallet.wallet_name)
+                    "password": wallet.password,  # Or hashed password / hint depending on your schema
+                }
+            )
+
+        return passwords_list
+
+    except HTTPException as he:
+        raise he
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
     finally:
         db.close()

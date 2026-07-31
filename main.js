@@ -1,5 +1,26 @@
-let currentIndex = 2;
+let currentIndex;
+let theme = "";
+const token = localStorage.getItem("authToken");
 
+// 1. Get from localStorage and convert to a number
+currentIndex = parseInt(localStorage.getItem("currentIndex"));
+theme = localStorage.getItem("theme");
+
+// 2. Check if it's null (or NaN if nothing was found)
+if (isNaN(currentIndex)) {
+  currentIndex = 2;
+  localStorage.setItem("currentIndex", currentIndex);
+}
+if (!theme) {
+  theme = "dark";
+  localStorage.setItem("theme", theme);
+}
+
+if (theme === "light") {
+  document.documentElement.setAttribute("data-theme", "light");
+} else {
+  document.documentElement.removeAttribute("data-theme");
+}
 // Declare global variables (using let so they can be reassigned)
 let dailyData = [];
 let dailyTotal = 0.0;
@@ -15,7 +36,6 @@ fetchAndRenderMainPage();
 async function fetchAndRenderMainPage() {
   try {
     // 1. Always fetch the latest token safely inside the function
-    const token = localStorage.getItem("authToken");
     if (!token) {
       document.getElementById("login-dialog").showModal();
       return;
@@ -306,6 +326,38 @@ function renderRightPanel(canvasData, metricsTotal) {
     activeExpenseChart.destroy();
   }
 
+  // Define your color palettes
+  const darkPalette = [
+    "#3b82f6",
+    "#10b981",
+    "#f59e0b",
+    "#ef4444",
+    "#8b5cf6",
+    "#ec4899",
+    "#06b6d4",
+    "#f97316",
+    "#d946ef",
+    "#64748b",
+    "#eab308",
+  ];
+
+  const lightPalette = [
+    "#f472b6", // Soft Pastel Pink
+    "#60a5fa", // Soft Pastel Blue
+    "#34d399", // Soft Pastel Emerald/Green
+    "#fbbf24", // Soft Pastel Amber/Yellow
+    "#a78bfa", // Soft Pastel Violet
+    "#22d3ee", // Soft Pastel Cyan
+    "#fb923c", // Soft Pastel Orange
+    "#94a3b8", // Soft Pastel Slate Gray
+    "#f87171", // Soft Pastel Red
+    "#facc15", // Soft Pastel Bright Yellow
+    "#818cf8", // Soft Pastel Indigo
+  ];
+
+  // Choose colors dynamically based on your global 'theme' variable
+  const currentColors = theme === "light" ? lightPalette : darkPalette;
+
   // Create the new chart and save the reference
   activeExpenseChart = new Chart(ctx, {
     type: "doughnut",
@@ -314,19 +366,7 @@ function renderRightPanel(canvasData, metricsTotal) {
       datasets: [
         {
           data: canvasData.data,
-          backgroundColor: [
-            "#3b82f6", // Blue (Groceries)
-            "#10b981", // Emerald (Income)
-            "#f59e0b", // Amber (Healthcare)
-            "#ef4444", // Red (Bills)
-            "#8b5cf6", // Violet (Food & Dining)
-            "#ec4899", // Pink (Entertainment)
-            "#06b6d4", // Cyan (Transport)
-            "#f97316", // Orange
-            "#d946ef", // Fuchsia
-            "#64748b", // Slate Gray
-            "#eab308", // Yellow
-          ],
+          backgroundColor: currentColors,
           borderWidth: 0,
         },
       ],
@@ -340,7 +380,10 @@ function renderRightPanel(canvasData, metricsTotal) {
       plugins: {
         legend: {
           position: "bottom",
-          labels: { color: "#cbd3da", boxWidth: 12 },
+          labels: {
+            color: theme === "light" ? "#1e293b" : "#ffffff",
+            boxWidth: 12,
+          },
         },
       },
     },
@@ -994,6 +1037,8 @@ loginForm.addEventListener("submit", async (event) => {
 // ============= Settings Function ============= //
 const openSettings = document.getElementById("open-settings");
 const settingsDialog = document.getElementById("settings-dialog");
+const themesInput = document.getElementById("settings-theme");
+const intInput = document.getElementById("settings-metrics");
 
 openSettings.addEventListener("click", async (e) => {
   e.preventDefault();
@@ -1022,7 +1067,7 @@ openSettings.addEventListener("click", async (e) => {
     const email = data.email;
     const pfp = data.profile_picture;
     const lockedWallets = data.locked_wallets;
-    console.log(pfp);
+
     // Update settings UI elements
     document.getElementById("settings-email").textContent = email;
 
@@ -1030,8 +1075,260 @@ openSettings.addEventListener("click", async (e) => {
 
     pfpElement.src = "http://127.0.0.1:8000/uploads/" + pfp;
 
+    // Set dropdown selections based on current active variables
+    themesInput.value = theme; // "Light" or "Dark"
+
+    // Map numeric currentIndex (0-3) to dropdown string values ("Daily", "Weekly", etc.)
+    const indexToInterval = {
+      0: "daily",
+      1: "weekly",
+      2: "monthly",
+      3: "yearly",
+    };
+    intInput.value = indexToInterval[currentIndex] || "monthly";
+
     settingsDialog.showModal();
   } catch (error) {
     console.error("Error opening settings:", error);
   }
+});
+
+// ============= Change PW Function ============= //
+const changeForm = document.getElementById("change-form");
+const oldPasswordInput = document.getElementById("old-password");
+const newPasswordInput = document.getElementById("new-password");
+const oldWarningText = document.getElementById("old-warning-text");
+const newWarningText = document.getElementById("new-warning-text");
+const changeDialog = document.getElementById("change-dialog");
+
+oldPasswordInput.addEventListener("input", () => {
+  const password = oldPasswordInput.value.trim();
+
+  if (password.length === 0) {
+    oldWarningText.innerHTML = "";
+    oldWarningText.style.color = "";
+    return;
+  }
+
+  if (password.length < 8) {
+    oldWarningText.innerHTML =
+      '<i class="fa-solid fa-circle-xmark"></i> Invalid Password';
+    oldWarningText.style.color = "";
+    return;
+  }
+
+  if (password.length >= 8) {
+    oldWarningText.innerHTML =
+      '<i class="fa-solid fa-circle-check"></i> Valid Password';
+    oldWarningText.style.color = "#10b981";
+  }
+});
+
+newPasswordInput.addEventListener("input", () => {
+  const password = newPasswordInput.value.trim();
+
+  if (password.length === 0) {
+    newWarningText.innerHTML = "";
+    newWarningText.style.color = "";
+    return;
+  }
+
+  if (password.length < 8) {
+    newWarningText.innerHTML =
+      '<i class="fa-solid fa-circle-xmark"></i> Invalid Password';
+    newWarningText.style.color = "";
+    return;
+  }
+
+  if (password.length >= 8) {
+    newWarningText.innerHTML =
+      '<i class="fa-solid fa-circle-check"></i> Valid Password';
+    newWarningText.style.color = "#10b981";
+  }
+});
+
+changeForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  // Use distinct names for string values to prevent shadowing DOM elements
+  const oldVal = oldPasswordInput.value.trim();
+  const newVal = newPasswordInput.value.trim();
+
+  if (oldVal.length < 8) {
+    oldWarningText.style.color = "";
+    oldWarningText.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Passwords must contain a minimum of 8 characters.';
+    oldPasswordInput.value = "";
+    newWarningText.innerHTML = "";
+    return;
+  }
+
+  if (newVal.length < 8) {
+    newWarningText.style.color = "";
+    newWarningText.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Passwords must contain a minimum of 8 characters.';
+    newPasswordInput.value = "";
+    return;
+  }
+
+  if (newVal === oldVal) {
+    newWarningText.style.color = "";
+    newWarningText.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Password cannot be the same.';
+    newPasswordInput.value = "";
+    oldPasswordInput.value = "";
+    oldWarningText.innerHTML = "";
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      document.getElementById("login-dialog").showModal();
+      return;
+    }
+
+    const response = await fetch("http://127.0.0.1:8000/api/change-password", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+      body: JSON.stringify({
+        oldPassword: oldVal,
+        newPassword: newVal,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      oldWarningText.style.color = "";
+      oldWarningText.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${data.detail}`;
+      newWarningText.innerHTML = "";
+      oldPasswordInput.value = "";
+      newPasswordInput.value = "";
+      return; // Added return so it stops here and doesn't close the dialog on failure
+    }
+
+    // Success: Reset form and close dialog
+    oldWarningText.innerHTML = "";
+    newWarningText.innerHTML = "";
+    changeForm.reset();
+    changeDialog.close();
+  } catch (error) {
+    console.error("Error changing password:", error);
+  }
+});
+
+// ============= Manage PW Function ============= //
+const openManage = document.getElementById("open-manage");
+
+openManage.addEventListener("click", function (event) {
+  event.preventDefault();
+  loadPasswords();
+  document.getElementById("manage-dialog").showModal();
+});
+
+async function loadPasswords() {
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      document.getElementById("login-dialog").showModal();
+      return;
+    }
+
+    const response = await fetch("http://127.0.0.1:8000/api/render-passwords", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Failed to load passwords:", data.detail);
+      return;
+    }
+
+    const tableDetailsContainer = document.getElementById("password-details");
+
+    // Clear the placeholder text
+    tableDetailsContainer.innerHTML = "";
+
+    if (data.length === 0) {
+      tableDetailsContainer.innerHTML =
+        '<div style="padding: 12px; text-align: center; color: #888;">No passwords found.</div>';
+    } else {
+      // Loop through backend data and create rows
+      data.forEach((pw) => {
+        const rowDiv = document.createElement("div");
+        rowDiv.className = "table-row-item";
+
+        let showPassword = false;
+
+        // Create elements safely instead of pure template strings so we can attach events
+        rowDiv.innerHTML = `
+          <div>${pw.name}</div>
+          <div class="pw-text">********</div>
+          <div><i class="fa-solid fa-eye toggle-eye" style="cursor: pointer;"></i></div>
+        `;
+
+        // Add interactive toggle functionality for the eye icon
+        const eyeIcon = rowDiv.querySelector(".toggle-eye");
+        const pwTextDiv = rowDiv.querySelector(".pw-text");
+
+        eyeIcon.addEventListener("click", () => {
+          showPassword = !showPassword;
+          if (showPassword) {
+            pwTextDiv.textContent = pw.password;
+            eyeIcon.className = "fa-solid fa-eye-slash toggle-eye"; // Switch icon to hidden
+          } else {
+            pwTextDiv.textContent = "********";
+            eyeIcon.className = "fa-solid fa-eye toggle-eye"; // Switch icon back to normal
+          }
+        });
+
+        tableDetailsContainer.appendChild(rowDiv);
+      });
+    }
+  } catch (error) {
+    console.error("A network error occurred while loading passwords:", error);
+  }
+}
+
+// ============= Themes And Interval Function ============= //
+const applyBtn = document.getElementById("apply-changes");
+
+applyBtn.addEventListener("click", function () {
+  const selectedTheme = themesInput.value; // renamed, no shadowing
+  const interval = intInput.value;
+
+  theme = selectedTheme; // update the OUTER variable
+  localStorage.setItem("theme", theme);
+
+  if (theme === "light") {
+    document.documentElement.setAttribute("data-theme", "light");
+  } else {
+    document.documentElement.removeAttribute("data-theme");
+  }
+
+  if (interval === "daily") {
+    currentIndex = 0;
+  } else if (interval === "weekly") {
+    currentIndex = 1;
+  } else if (interval === "monthly") {
+    currentIndex = 2;
+  } else if (interval === "yearly") {
+    currentIndex = 3;
+  }
+
+  localStorage.setItem("currentIndex", currentIndex);
+
+  updateSlide();
+  adjustRightPanel();
+  console.log(theme, currentIndex);
+  document.getElementById("settings-dialog").close();
 });

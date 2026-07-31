@@ -493,6 +493,7 @@
             class="btn-save"
             type="button"
             style="width: 100%; font-size: 12px"
+            onclick="document.getElementById('change-dialog').showModal()"
           >
             <i class="fa-solid fa-retweet"></i>&nbsp;Change Password
           </button>
@@ -500,8 +501,9 @@
             class="btn-save"
             type="button"
             style="width: 100%; font-size: 12px"
+            id="open-manage"
           >
-            <i class="fa-solid fa-key"></i>&nbsp;Check Passwords
+            <i class="fa-solid fa-key"></i>&nbsp;Manage Passwords
           </button>
         </div>
 
@@ -513,7 +515,7 @@
             name="settings-theme"
             class="dropdown-cat"
           >
-            <option value="dark">Dark (Default)</option>
+            <option value="dark">Dark</option>
             <option value="light">Light</option>
           </select>
         </div>
@@ -528,7 +530,7 @@
           >
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
-            <option value="monthly" selected>Monthly (Default)</option>
+            <option value="monthly" selected>Monthly</option>
             <option value="yearly">Yearly</option>
           </select>
         </div>
@@ -544,12 +546,12 @@
             width="100%"
             onclick="
               localStorage.removeItem('authToken');
-              location.reload();
+              document.getElementById('login-dialog').showModal();
             "
           >
             <i class="fa-solid fa-right-from-bracket"></i>&nbsp;Log Out
           </button>
-          <button class="btn-save" type="submit" width="100%">
+          <button class="btn-save" id="apply-changes" width="100%">
             <i class="fa-solid fa-floppy-disk"></i>&nbsp;Apply
           </button>
         </div>
@@ -581,6 +583,77 @@
           </div>
         </div>
       </form>
+    </dialog>
+    <!-- ====================== Change PW Dialog ====================== -->
+    <dialog class="dialog-box" id="change-dialog">
+      <form id="change-form" method="dialog">
+        <h3>Change your account password</h3>
+
+        <div class="input-group">
+          <label for="old-password">Enter old password</label>
+          <input
+            type="password"
+            id="old-password"
+            name="old-password"
+            placeholder="Enter Password Here..."
+          />
+          <p class="warning-text" id="old-warning-text"></p>
+        </div>
+
+        <div class="input-group">
+          <label for="new-password">Enter new password</label>
+          <input
+            type="password"
+            id="new-password"
+            name="new-password"
+            placeholder="Enter Password Here..."
+          />
+          <p class="warning-text" id="new-warning-text"></p>
+        </div>
+
+        <div class="dialog-btn">
+          <button
+            onclick="
+              document.getElementById('old-password').value = '';
+              document.getElementById('old-warning-text').innerHTML = '';
+              document.getElementById('new-password').value = '';
+              document.getElementById('new-warning-text').innerHTML = '';
+              document.getElementById('change-dialog').close();
+            "
+            class="btn-cancel"
+            type="button"
+          >
+            <i class="fa-solid fa-xmark"></i> Cancel
+          </button>
+          <button class="btn-save" type="submit">
+            <i class="fa-solid fa-retweet"></i>&nbsp;Change Passsword
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- ====================== Manage PW Dialog ====================== -->
+    <dialog class="dialog-box" id="manage-dialog">
+      <h3 style="text-align: center; margin-bottom: 20px">
+        Manage Wallet Passwords
+      </h3>
+      <button
+        class="password-close"
+        onclick="document.getElementById('manage-dialog').close()"
+      >
+        <i class="fa-solid fa-circle-xmark" style="color: rgb(210, 5, 5)"></i>
+      </button>
+      <div class="password-card">
+        <div class="password-headers">
+          <div>Wallet</div>
+          <div>Password</div>
+          <div>View</div>
+        </div>
+        <div style="height: 1px; background: #222633; margin: 6px 0"></div>
+        <div class="password-scroll">
+          <div class="password-details" id="password-details"></div>
+        </div>
+      </div>
     </dialog>
   </body>
 </html>
