@@ -399,7 +399,7 @@
             width="100%"
             onclick="
               localStorage.removeItem('authToken');
-              document.getElementById('login-dialog').showModal();
+              window.location.href = 'main.html';
             "
           >
             <i class="fa-solid fa-right-from-bracket"></i>&nbsp;Log Out
@@ -408,33 +408,9 @@
             <i class="fa-solid fa-floppy-disk"></i>&nbsp;Apply
           </button>
         </div>
-
-        <!-- Whitelist Container at the very bottom -->
-        <div class="input-group" id="whitelist-box">
-          <label for="whitelist-email" class="whitelist-item"
-            >Grant Permission</label
-          >
-          <div>
-            <input
-              type="email"
-              id="whitelist-email"
-              name="whitelist-email"
-              placeholder="example@gmail.com"
-              class="whitelist-item"
-            />
-            <div class="dialog-btn">
-              <button class="btn-save" id="whitelist-btn" type="button">
-                <i class="fa-solid fa-plus"></i>&nbsp;Whitelist
-              </button>
-              <button class="close">
-                <i
-                  class="fa-solid fa-circle-xmark"
-                  style="color: rgb(210, 5, 5)"
-                ></i>
-              </button>
-            </div>
-          </div>
-        </div>
+        <button class="settings-close">
+          <i class="fa-solid fa-circle-xmark" style="color: rgb(210, 5, 5)"></i>
+        </button>
       </form>
     </dialog>
     <!-- ====================== Change PW Dialog ====================== -->

@@ -1,6 +1,6 @@
 let currentIndex;
 let theme = "";
-const token = localStorage.getItem("authToken");
+let token = localStorage.getItem("authToken");
 
 // 1. Get from localStorage and convert to a number
 currentIndex = parseInt(localStorage.getItem("currentIndex"));
@@ -66,6 +66,9 @@ let metricsData = {
 let walletId = "";
 
 async function fetchAndRenderWalletPage() {
+  // Always read the latest auth token before making the request.
+  token = localStorage.getItem("authToken");
+
   // 1. Get the wallet ID from the URL
   const urlParams = new URLSearchParams(window.location.search);
   walletId = urlParams.get("id");
@@ -201,6 +204,36 @@ function renderRightPanel(canvasData, metricsTotal) {
     activeExpenseChart.destroy();
   }
 
+  const darkPalette = [
+    "#3b82f6",
+    "#10b981",
+    "#f59e0b",
+    "#ef4444",
+    "#8b5cf6",
+    "#ec4899",
+    "#06b6d4",
+    "#f97316",
+    "#d946ef",
+    "#64748b",
+    "#eab308",
+  ];
+
+  const lightPalette = [
+    "#f472b6", // Soft Pastel Pink
+    "#60a5fa", // Soft Pastel Blue
+    "#34d399", // Soft Pastel Emerald/Green
+    "#fbbf24", // Soft Pastel Amber/Yellow
+    "#a78bfa", // Soft Pastel Violet
+    "#22d3ee", // Soft Pastel Cyan
+    "#fb923c", // Soft Pastel Orange
+    "#94a3b8", // Soft Pastel Slate Gray
+    "#f87171", // Soft Pastel Red
+    "#facc15", // Soft Pastel Bright Yellow
+    "#818cf8", // Soft Pastel Indigo
+  ];
+
+  const currentColors = theme === "light" ? lightPalette : darkPalette;
+
   activeExpenseChart = new Chart(ctx, {
     type: "doughnut",
     data: {
@@ -208,19 +241,7 @@ function renderRightPanel(canvasData, metricsTotal) {
       datasets: [
         {
           data: canvasData.data,
-          backgroundColor: [
-            "#3b82f6", // Blue (Groceries)
-            "#10b981", // Emerald (Income)
-            "#f59e0b", // Amber (Healthcare)
-            "#ef4444", // Red (Bills)
-            "#8b5cf6", // Violet (Food & Dining)
-            "#ec4899", // Pink (Entertainment)
-            "#06b6d4", // Cyan (Transport)
-            "#f97316", // Orange
-            "#d946ef", // Fuchsia
-            "#64748b", // Slate Gray
-            "#eab308", // Yellow
-          ],
+          backgroundColor: currentColors,
           borderWidth: 0,
         },
       ],
@@ -234,7 +255,10 @@ function renderRightPanel(canvasData, metricsTotal) {
       plugins: {
         legend: {
           position: "bottom",
-          labels: { color: "#cbd3da", boxWidth: 12 },
+          labels: {
+            color: theme === "light" ? "#1e293b" : "#ffffff",
+            boxWidth: 12,
+          },
         },
       },
     },

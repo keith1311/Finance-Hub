@@ -45,7 +45,9 @@
                 >
                   <i class="fa-solid fa-square-plus"></i> Create Wallet</a
                 >
-                <a> <i class="fa-solid fa-wallet"></i> View All Wallet</a>
+                <a id="view-all-wallets">
+                  <i class="fa-solid fa-wallet"></i> View All Wallet</a
+                >
                 <a id="open-settings">
                   <i class="fa-solid fa-gear"></i> Settings</a
                 >
@@ -366,7 +368,7 @@
           <p class="warning-text" id="login-password-warning-text"></p>
         </div>
 
-        <div class="dialog-btn">
+        <div class="dialog-btn2">
           <button
             class="to-register"
             type="button"
@@ -382,21 +384,6 @@
             "
           >
             <i class="fa-solid fa-user-plus"></i>&nbsp;Register Account
-          </button>
-          <button
-            onclick="
-              document.getElementById('login-email').value = '';
-              document.getElementById('login-password').value = '';
-              document.getElementById('login-email-warning-text').innerHTML =
-                '';
-              document.getElementById('login-password-warning-text').innerHTML =
-                '';
-              document.getElementById('login-dialog').close();
-            "
-            class="btn-cancel"
-            type="button"
-          >
-            <i class="fa-solid fa-xmark"></i> Cancel
           </button>
           <button class="btn-save" type="submit">
             <i class="fa-solid fa-right-to-bracket"></i>&nbsp;Log In
@@ -433,7 +420,7 @@
           <p class="warning-text" id="register-password-warning-text"></p>
         </div>
 
-        <div class="dialog-btn">
+        <div class="dialog-btn2">
           <button
             class="to-register"
             type="button"
@@ -451,22 +438,7 @@
           >
             <i class="fa-solid fa-right-to-bracket"></i>&nbsp;Login Account
           </button>
-          <button
-            onclick="
-              document.getElementById('register-email').value = '';
-              document.getElementById('register-password').value = '';
-              document.getElementById('register-email-warning-text').innerHTML =
-                '';
-              document.getElementById(
-                'register-password-warning-text',
-              ).innerHTML = '';
-              document.getElementById('register-dialog').close();
-            "
-            class="btn-cancel"
-            type="button"
-          >
-            <i class="fa-solid fa-xmark"></i> Cancel
-          </button>
+
           <button class="btn-save" type="submit">
             <i class="fa-solid fa-user-plus"></i>&nbsp;Register
           </button>
@@ -653,6 +625,20 @@
         <div class="password-scroll">
           <div class="password-details" id="password-details"></div>
         </div>
+      </div>
+    </dialog>
+
+    <!-- ====================== View Wallets Dialog ====================== -->
+    <dialog class="dialog-box" id="wallets-dialog">
+      <h3 style="text-align: center; margin-bottom: 20px">View All Wallets</h3>
+      <button
+        class="password-close"
+        onclick="document.getElementById('wallets-dialog').close()"
+      >
+        <i class="fa-solid fa-circle-xmark" style="color: rgb(210, 5, 5)"></i>
+      </button>
+      <div class="wallet-scroll">
+        <div class="view-wallets-grid" id="all-wallets-grid"></div>
       </div>
     </dialog>
   </body>

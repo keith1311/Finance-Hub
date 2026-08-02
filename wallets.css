@@ -12,7 +12,11 @@
   --dialog-bg: #1e293b; /* Modal dialog background */
   --button-muted: #334155; /* Cancel buttons and secondary controls */
   --button-hover: #475569; /* Hover states for secondary buttons */
+  --scrollbar-thumb: #3a4150;
+  --text-subtle: #cbd3da;
   --warning: #e74c3c; /* Warning text color */
+  --danger: #a60000; /* Delete button background */
+  --chart-bg: linear-gradient(180deg, #0c0f12, #0b0e11);
 }
 
 [data-theme="light"] {
@@ -28,8 +32,10 @@
   --input-border: #f472b6; /* Soft pink border for inputs */
   --dialog-bg: #ffffff;
   --button-muted: #f1f5f9;
-  --button-hover: #e2e8f0;
+  --button-hover: #ffb1e2;
   --warning: #dc2626;
+  --danger: #ef4444; /* Delete button background */
+  --chart-bg: linear-gradient(180deg, #ffbff3, #ffeefe);
 }
 
 * {
@@ -146,7 +152,7 @@ body {
 .analysis-chart {
   height: 260px;
   border-radius: 16px;
-  background: linear-gradient(180deg, #0c0f12, #0b0e11);
+  background: var(--chart-bg);
   padding: 16px;
   display: flex;
   align-items: center;
@@ -227,10 +233,11 @@ body {
   flex-grow: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  margin-top: 8px;
+  margin-top: 0px;
   min-height: 0;
-  scrollbar-color: var(--accent) var(--card);
+  scrollbar-color: var(--scrollbar-thumb) var(--card);
   scrollbar-width: thin;
+  max-height: 500px;
 }
 
 .table_details {
@@ -238,7 +245,7 @@ body {
   flex-direction: column;
   gap: 4px;
   padding: 4px 0;
-  color: #cbd3da;
+  color: var(--text-subtle);
 }
 
 .table-row-item {
@@ -404,7 +411,7 @@ body {
   min-height: 220px;
   width: 100%;
   border-radius: 8px;
-  background: linear-gradient(180deg, #0c0f12, #0b0e11);
+  background: var(--chart-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -493,7 +500,7 @@ dialog.dialog-box h3 {
 
 .input-group label {
   font-size: 0.75rem;
-  color: #cbd5e1;
+  color: var(--text-label);
   font-weight: 500;
 }
 
@@ -537,7 +544,7 @@ dialog.dialog-box h3 {
 
 .btn-cancel {
   background-color: var(--button-muted);
-  color: #cbd5e1;
+  color: var(--text);
 }
 
 .btn-cancel:hover {
@@ -549,7 +556,13 @@ dialog.dialog-box h3 {
   color: var(--text);
 }
 
-.btn-save:hover {
+.btn-dlt {
+  background-color: var(--danger);
+  color: var(--text);
+}
+
+.btn-save:hover,
+.btn-dlt:hover {
   filter: brightness(1.15);
 }
 
@@ -661,22 +674,6 @@ select.dropdown-cat option {
   padding: 10px;
 }
 
-#whitelist-box {
-  display: flex;
-  flex-direction: column;
-}
-
-.whitelist-item {
-  display: flex;
-  position: relative;
-}
-
-#whitelist-btn {
-  position: absolute;
-  right: 45px;
-  bottom: 52px;
-}
-
 .close {
   position: absolute;
   top: -9px;
@@ -687,7 +684,18 @@ select.dropdown-cat option {
   padding: 0;
 }
 
-.close i {
+.settings-close {
+  position: absolute;
+  top: 0px;
+  right: -2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.close,
+.settings-close i {
   font-size: 32px;
 }
 

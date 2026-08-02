@@ -6,19 +6,16 @@
   --muted: #8a92a6;
   --text: #ffffff;
 
-  /* Consolidated & Merged Color Variables */
-  --input-bg: #0f172a; /* Input background */
-  --input-border: #334155; /* Input borders */
-  --dialog-bg: #1e293b; /* Dialog boxes (.dialog-box and .dialog-box2) */
-  --button-muted: #334155; /* Cancel buttons and neutral elements */
-  --button-hover: #475569; /* Hover state for secondary/cancel buttons */
-  --danger: #a60000; /* Delete button background */
+  /* Newly merged variables for consistency */
+  --input-bg: #0f172a; /* Merged for dark inputs/selects */
+  --input-border: #334155; /* Merged for input borders */
+  --dialog-bg: #1e293b; /* Modal dialog background */
+  --button-muted: #334155; /* Cancel buttons and secondary controls */
+  --button-hover: #475569; /* Hover states for secondary buttons */
+  --scrollbar-thumb: #3a4150;
+  --text-subtle: #cbd3da;
   --warning: #e74c3c; /* Warning text color */
-  --table-border: #121418; /* Table row borders */
-  --dropdown-border: #2a2d36; /* Dropdown menu borders */
-  --text-subtle: #cbd3da; /* Secondary table row text */
-  --text-label: #cbd5e1; /* Form input labels and secondary text */
-  --scrollbar-thumb: #3a4150; /* Scrollbar thumb color */
+  --danger: #a60000; /* Delete button background */
   --chart-bg: linear-gradient(180deg, #0c0f12, #0b0e11);
 }
 
@@ -30,22 +27,16 @@
   --muted: #64748b; /* Muted gray text */
   --text: #1e293b; /* Dark slate main text for high contrast */
 
-  /* Light Mode UI Components */
+  /* Newly merged variables mapped for light mode */
   --input-bg: #ffffff;
   --input-border: #f472b6; /* Soft pink border for inputs */
   --dialog-bg: #ffffff;
   --button-muted: #f1f5f9;
-  --button-hover: #e2e8f0;
-  --danger: #ef4444;
+  --button-hover: #ffb1e2;
   --warning: #dc2626;
-  --table-border: #fce7f3; /* Very light pink table borders */
-  --dropdown-border: #f472b6;
-  --text-subtle: #475569;
-  --text-label: #334155;
-  --scrollbar-thumb: #f472b6;
+  --danger: #ef4444;
   --chart-bg: linear-gradient(180deg, #ffbff3, #ffeefe);
 }
-
 * {
   box-sizing: border-box;
 }
@@ -228,6 +219,7 @@ body {
 
 .dropdown-menu a:last-child {
   border-bottom: none;
+  bottom: 100%;
 }
 
 .dropdown-menu a:hover {
@@ -311,7 +303,7 @@ body {
   flex-grow: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  margin-top: 8px;
+  margin-top: 0px;
   min-height: 0;
   scrollbar-color: var(--scrollbar-thumb) var(--card);
   scrollbar-width: thin;
@@ -550,7 +542,14 @@ dialog.dialog-box h3 {
   gap: 10px;
 }
 
-.dialog-btn button {
+.dialog-btn2 {
+  display: flex;
+  justify-content: flex-start;
+  gap: 115px;
+}
+
+.dialog-btn button,
+.dialog-btn2 button {
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 0.875rem;
@@ -561,19 +560,13 @@ dialog.dialog-box h3 {
 
 .btn-cancel {
   background-color: var(--button-muted);
-  color: var(--text-label);
+  color: var(--text);
 }
 
 .btn-cancel:hover {
   background-color: var(--button-hover);
 }
 
-.dialog-btn button.to-register {
-  background-color: var(--accent);
-  color: var(--text);
-  font-size: xx-small;
-  margin-right: 30px;
-}
 .btn-save {
   background-color: var(--accent);
   color: var(--text);
@@ -752,4 +745,25 @@ select.dropdown-cat option {
   gap: 4px;
   padding: 4px 0;
   color: var(--text-subtle);
+}
+#wallets-dialog {
+  width: 90%;
+  max-width: 600px;
+  max-height: 85vh; /* Restricts total dialog height */
+  overflow: hidden; /* Hides any overflow outside the main dialog box */
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.wallet-scroll {
+  max-height: 85vh;
+  overflow-y: auto; /* Enables vertical scrolling */
+  scrollbar-color: var(--scrollbar-thumb) var(--input-bg);
+  scrollbar-width: thin;
+  padding-right: 12px; /* Space between content and scrollbar */
+}
+.view-wallets-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 }

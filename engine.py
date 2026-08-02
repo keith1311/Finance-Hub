@@ -65,221 +65,241 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
+def serialize_wallet(wallet: Wallet):
+    if wallet.censor == True:
+        balance = "******"
+    elif wallet.censor == False:
+        balance = f"{wallet.balance:.2f}"
+    else:
+        balance = wallet.balance
+
+    return {
+        "id": wallet.id,
+        "name": wallet.name,
+        "balance": balance,
+        "password": wallet.password,
+        "censor": wallet.censor,
+        "pin": wallet.pin,
+        "hide": wallet.hide,
+    }
+
+
 @app.post("/api/render_main_page/{token}")
 def render_main_page(token: str):
     db = SessionLocal()
-    user_id = verify_access_token(token)
-    # Fetch the top 6 wallets based on last_used timestamp
-    top_six = (
-        db.query(Wallet)
-        .filter(Wallet.hide == False, Wallet.user_id == user_id)
-        .order_by(Wallet.pin.desc(), Wallet.last_used.desc())
-        .limit(6)
-        .all()
-    )
-    rendered_wallets = []
-    for wallet in top_six:
-        if wallet.censor == True:
-            balance = "******"
-        elif wallet.censor == False:
-            balance = f"{wallet.balance:.2f}"
-        else:
-            balance = wallet.balance
+    try:
+        user_id = verify_access_token(token)
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User not found.")
 
-        rendered_wallets.append(
-            {
-                "id": wallet.id,
-                "name": wallet.name,
-                "balance": balance,
-                "password": wallet.password,
-                "censor": wallet.censor,
-                "pin": wallet.pin,
-            }
+        # Fetch the top 6 wallets based on last_used timestamp
+        top_six = (
+            db.query(Wallet)
+            .filter(Wallet.hide == False, Wallet.user_id == user_id)
+            .order_by(Wallet.pin.desc(), Wallet.last_used.desc())
+            .limit(6)
+            .all()
+        )
+        rendered_wallets = [serialize_wallet(wallet) for wallet in top_six]
+
+        # Calculate total balance across all wallets
+        all_balances = (
+            db.query(Wallet)
+            .with_entities(Wallet.balance)
+            .filter(Wallet.user_id == user_id)
+            .all()
+        )
+        total_balance = sum(wallet.balance for wallet in all_balances)
+
+        # Fetch transaction data
+        raw_transaction_data = (
+            db.query(Transactions)
+            .join(Wallet, Transactions.wallet_id == Wallet.id)
+            .filter(Wallet.user_id == user_id)
+            .with_entities(
+                Transactions.date,
+                Transactions.tags,
+                Transactions.category,
+                Transactions.amount,
+                Wallet.name.label("wallet_name"),
+            )
+            .order_by(Transactions.date.desc())
+            .limit(100)
+            .all()
         )
 
-    # Calculate total balance across all wallets
-    all_balances = (
-        db.query(Wallet)
-        .with_entities(Wallet.balance)
-        .filter(Wallet.user_id == user_id)
-        .all()
-    )
-    total_balance = sum(wallet.balance for wallet in all_balances)
+        transaction_data = []
+        for tx in raw_transaction_data:
+            transaction_data.append(
+                {
+                    "date": tx.date.strftime("%Y-%m-%d"),
+                    "tags": tx.tags,
+                    "category": tx.category,
+                    "amount": tx.amount,
+                    "wallet_name": tx.wallet_name,
+                }
+            )
 
-    # Fetch transaction data
-    raw_transaction_data = (
-        db.query(Transactions)
-        .join(Wallet, Transactions.wallet_id == Wallet.id)
-        .filter(Wallet.user_id == user_id)
-        .with_entities(
-            Transactions.date,
-            Transactions.tags,
-            Transactions.category,
-            Transactions.amount,
-            Wallet.name.label("wallet_name"),
+        # Fetch Canvas Data
+        current_day = date.today()
+        start_of_day = datetime.combine(
+            current_day, datetime.min.time()
+        )  # 2026-07-31 00:00:00
+        end_of_day = start_of_day + timedelta(days=1)  # 2026-08-01 00:00:00
+        current_year = current_day.year
+        current_month = current_day.month
+
+        # Find the start of the week (Monday)
+        start_of_week = current_day - timedelta(days=current_day.weekday())
+        end_of_week = start_of_week + timedelta(days=6)
+
+        # --- 1. DAILY DATA ---
+        raw_daily_data = (
+            db.query(
+                Transactions.category, func.sum(Transactions.amount).label("total")
+            )
+            .join(Wallet, Transactions.wallet_id == Wallet.id)
+            .filter(
+                Wallet.user_id == user_id,
+                Transactions.category != "Income",
+                Transactions.date >= start_of_day,
+                Transactions.date < end_of_day,
+            )
+            .group_by(Transactions.category)
+            .all()
         )
-        .order_by(Transactions.date.desc())
-        .limit(100)
-        .all()
-    )
+        daily_total = (
+            db.query(func.sum(Transactions.amount))
+            .join(Wallet, Transactions.wallet_id == Wallet.id)
+            .filter(
+                Transactions.category != "Income",
+                Transactions.date >= start_of_day,
+                Transactions.date < end_of_day,
+                Wallet.user_id == user_id,
+            )
+            .scalar()
+        ) or 0.0
 
-    transaction_data = []
-    for tx in raw_transaction_data:
-        transaction_data.append(
-            {
-                "date": tx.date.strftime("%Y-%m-%d"),
-                "tags": tx.tags,
-                "category": tx.category,
-                "amount": tx.amount,
-                "wallet_name": tx.wallet_name,
-            }
+        daily_data = {
+            "labels": [row.category for row in raw_daily_data],
+            "data": [float(row.total) for row in raw_daily_data],
+        }
+
+        # --- 2. WEEKLY DATA ---
+        raw_weekly_data = (
+            db.query(
+                Transactions.category, func.sum(Transactions.amount).label("total")
+            )
+            .join(Wallet, Transactions.wallet_id == Wallet.id)
+            .filter(
+                Wallet.user_id == user_id,
+                Transactions.category != "Income",
+                Transactions.date.between(start_of_week, end_of_week),
+            )
+            .group_by(Transactions.category)
+            .all()
+        )
+        weekly_total = (
+            db.query(func.sum(Transactions.amount))
+            .join(Wallet, Transactions.wallet_id == Wallet.id)
+            .filter(
+                Transactions.category != "Income",
+                Transactions.date.between(start_of_week, end_of_week),
+                Wallet.user_id == user_id,
+            )
+            .scalar()
+        ) or 0.0
+
+        weekly_data = {
+            "labels": [row.category for row in raw_weekly_data],
+            "data": [float(row.total) for row in raw_weekly_data],
+        }
+
+        # --- 3. MONTHLY DATA ---
+        raw_monthly_data = (
+            db.query(
+                Transactions.category, func.sum(Transactions.amount).label("total")
+            )
+            .join(Wallet, Transactions.wallet_id == Wallet.id)
+            .filter(
+                Wallet.user_id == user_id,
+                Transactions.category != "Income",
+                extract("year", Transactions.date) == current_year,
+                extract("month", Transactions.date) == current_month,
+            )
+            .group_by(Transactions.category)
+            .all()
+        )
+        monthly_total = (
+            db.query(func.sum(Transactions.amount))
+            .join(Wallet, Transactions.wallet_id == Wallet.id)
+            .filter(
+                Wallet.user_id == user_id,
+                Transactions.category != "Income",
+                extract("year", Transactions.date) == current_year,
+                extract("month", Transactions.date) == current_month,
+            )
+            .scalar()
+        ) or 0.0
+
+        monthly_data = {
+            "labels": [row.category for row in raw_monthly_data],
+            "data": [float(row.total) for row in raw_monthly_data],
+        }
+
+        # --- 4. YEARLY DATA ---
+        raw_yearly_data = (
+            db.query(
+                Transactions.category, func.sum(Transactions.amount).label("total")
+            )
+            .join(Wallet, Transactions.wallet_id == Wallet.id)
+            .filter(
+                Wallet.user_id == user_id,
+                Transactions.category != "Income",
+                extract("year", Transactions.date) == current_year,
+            )
+            .group_by(Transactions.category)
+            .all()
+        )
+        yearly_total = (
+            db.query(func.sum(Transactions.amount))
+            .join(Wallet, Transactions.wallet_id == Wallet.id)
+            .filter(
+                Wallet.user_id == user_id,
+                Transactions.category != "Income",
+                extract("year", Transactions.date) == current_year,
+            )
+            .scalar()
+        ) or 0.0
+
+        yearly_data = {
+            "labels": [row.category for row in raw_yearly_data],
+            "data": [float(row.total) for row in raw_yearly_data],
+        }
+
+        return (
+            rendered_wallets,
+            total_balance,
+            transaction_data,
+            daily_data,
+            daily_total,
+            weekly_data,
+            weekly_total,
+            monthly_data,
+            monthly_total,
+            yearly_data,
+            yearly_total,
         )
 
-    # Fetch Canvas Data
-    current_day = date.today()
-    start_of_day = datetime.combine(
-        current_day, datetime.min.time()
-    )  # 2026-07-31 00:00:00
-    end_of_day = start_of_day + timedelta(days=1)  # 2026-08-01 00:00:00
-    current_year = current_day.year
-    current_month = current_day.month
+    except HTTPException as he:
+        raise he
 
-    # Find the start of the week (Monday)
-    start_of_week = current_day - timedelta(days=current_day.weekday())
-    end_of_week = start_of_week + timedelta(days=6)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
-    # Get Metrics Index (Hardcoded to 2 for now, but you can pass this via query params later)
-
-    # --- 1. DAILY DATA ---
-    raw_daily_data = (
-        db.query(Transactions.category, func.sum(Transactions.amount).label("total"))
-        .join(Wallet, Transactions.wallet_id == Wallet.id)
-        .filter(
-            Wallet.user_id == user_id,
-            Transactions.category != "Income",
-            Transactions.date >= start_of_day,
-            Transactions.date < end_of_day,
-        )
-        .group_by(Transactions.category)
-        .all()
-    )
-    daily_total = (
-        db.query(func.sum(Transactions.amount))
-        .join(Wallet, Transactions.wallet_id == Wallet.id)
-        .filter(
-            Transactions.category != "Income",
-            Transactions.date >= start_of_day,
-            Transactions.date < end_of_day,
-            Wallet.user_id == user_id,
-        )
-        .scalar()
-    ) or 0.0
-
-    daily_data = {
-        "labels": [row.category for row in raw_daily_data],
-        "data": [float(row.total) for row in raw_daily_data],
-    }
-
-    # --- 2. WEEKLY DATA ---
-    raw_weekly_data = (
-        db.query(Transactions.category, func.sum(Transactions.amount).label("total"))
-        .join(Wallet, Transactions.wallet_id == Wallet.id)
-        .filter(
-            Wallet.user_id == user_id,
-            Transactions.category != "Income",
-            Transactions.date.between(start_of_week, end_of_week),
-        )
-        .group_by(Transactions.category)
-        .all()
-    )
-    weekly_total = (
-        db.query(func.sum(Transactions.amount))
-        .join(Wallet, Transactions.wallet_id == Wallet.id)
-        .filter(
-            Transactions.category != "Income",
-            Transactions.date.between(start_of_week, end_of_week),
-            Wallet.user_id == user_id,
-        )
-        .scalar()
-    ) or 0.0
-
-    weekly_data = {
-        "labels": [row.category for row in raw_weekly_data],
-        "data": [float(row.total) for row in raw_weekly_data],
-    }
-
-    # --- 3. MONTHLY DATA ---
-    raw_monthly_data = (
-        db.query(Transactions.category, func.sum(Transactions.amount).label("total"))
-        .join(Wallet, Transactions.wallet_id == Wallet.id)
-        .filter(
-            Wallet.user_id == user_id,
-            Transactions.category != "Income",
-            extract("year", Transactions.date) == current_year,
-            extract("month", Transactions.date) == current_month,
-        )
-        .group_by(Transactions.category)
-        .all()
-    )
-    monthly_total = (
-        db.query(func.sum(Transactions.amount))
-        .join(Wallet, Transactions.wallet_id == Wallet.id)
-        .filter(
-            Wallet.user_id == user_id,
-            Transactions.category != "Income",
-            extract("year", Transactions.date) == current_year,
-            extract("month", Transactions.date) == current_month,
-        )
-        .scalar()
-    ) or 0.0
-
-    monthly_data = {
-        "labels": [row.category for row in raw_monthly_data],
-        "data": [float(row.total) for row in raw_monthly_data],
-    }
-
-    # --- 4. YEARLY DATA ---
-    raw_yearly_data = (
-        db.query(Transactions.category, func.sum(Transactions.amount).label("total"))
-        .join(Wallet, Transactions.wallet_id == Wallet.id)
-        .filter(
-            Wallet.user_id == user_id,
-            Transactions.category != "Income",
-            extract("year", Transactions.date) == current_year,
-        )
-        .group_by(Transactions.category)
-        .all()
-    )
-    yearly_total = (
-        db.query(func.sum(Transactions.amount))
-        .join(Wallet, Transactions.wallet_id == Wallet.id)
-        .filter(
-            Wallet.user_id == user_id,
-            Transactions.category != "Income",
-            extract("year", Transactions.date) == current_year,
-        )
-        .scalar()
-    ) or 0.0
-
-    yearly_data = {
-        "labels": [row.category for row in raw_yearly_data],
-        "data": [float(row.total) for row in raw_yearly_data],
-    }
-    db.close()
-
-    return (
-        rendered_wallets,
-        total_balance,
-        transaction_data,
-        daily_data,
-        daily_total,
-        weekly_data,
-        weekly_total,
-        monthly_data,
-        monthly_total,
-        yearly_data,
-        yearly_total,
-    )
+    finally:
+        db.close()
 
 
 @app.post("/api/render_wallet_page/{wallet_id}")
@@ -1041,6 +1061,7 @@ def create_wallet(wallet_name: str, token: str):
             censor=False,
             hide=False,
             pin=False,
+            user_id=user_id,
         )
 
         # 2. Add the record to the session
@@ -1466,6 +1487,108 @@ def render_passwords(authorization: str = Header(None)):
         raise he
 
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        db.close()
+
+
+@app.post("/api/load-wallets")
+def load_wallets(authorization: str = Header(None)):
+    db = SessionLocal()
+    try:
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid request.")
+
+        token = authorization.split(" ")[1]
+        user_id = verify_access_token(token=token)
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User not found.")
+
+        # Fetch the wallets for the authenticated user
+        wallets = (
+            db.query(Wallet)
+            .filter(Wallet.user_id == user_id)
+            .order_by(Wallet.pin.desc(), Wallet.last_used.desc())
+            .all()
+        )
+
+        rendered_wallets = []
+        for wallet in wallets:
+            if wallet.censor == True:
+                balance = "******"
+            elif wallet.censor == False:
+                balance = f"{wallet.balance:.2f}"
+            else:
+                balance = wallet.balance
+
+            rendered_wallets.append(
+                {
+                    "id": wallet.id,
+                    "name": wallet.name,
+                    "balance": balance,
+                    "password": wallet.password,
+                    "censor": wallet.censor,
+                    "pin": wallet.pin,
+                    "hide": wallet.hide,
+                }
+            )
+        return rendered_wallets
+
+    except HTTPException as he:
+        raise he
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        db.close()
+
+
+@app.post("/api/wallet-data/{token}")
+def load_wallet_data(token: str):
+    db = SessionLocal()
+    try:
+        user_id = verify_access_token(token)
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User not found.")
+
+        # Fetch the wallets for the authenticated user
+        top_six = (
+            db.query(Wallet)
+            .filter(Wallet.hide == False, Wallet.user_id == user_id)
+            .order_by(Wallet.pin.desc(), Wallet.last_used.desc())
+            .limit(6)
+            .all()
+        )
+
+        rendered_wallets = []
+        for wallet in top_six:
+            if wallet.censor == True:
+                balance = "******"
+            elif wallet.censor == False:
+                balance = f"{wallet.balance:.2f}"
+            else:
+                balance = wallet.balance
+
+            rendered_wallets.append(
+                {
+                    "id": wallet.id,
+                    "name": wallet.name,
+                    "balance": balance,
+                    "password": wallet.password,
+                    "censor": wallet.censor,
+                    "pin": wallet.pin,
+                }
+            )
+
+        return {"wallets": rendered_wallets}
+
+    except HTTPException as he:
+        raise he  # Let FastAPI handle 400 properly
+
+    except Exception as e:
+        db.rollback()  # Undo changes if something unexpected fails
         raise HTTPException(status_code=500, detail=str(e))
 
     finally:

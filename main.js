@@ -1,6 +1,6 @@
 let currentIndex;
 let theme = "";
-const token = localStorage.getItem("authToken");
+let token = localStorage.getItem("authToken");
 
 // 1. Get from localStorage and convert to a number
 currentIndex = parseInt(localStorage.getItem("currentIndex"));
@@ -35,7 +35,9 @@ fetchAndRenderMainPage();
 
 async function fetchAndRenderMainPage() {
   try {
-    // 1. Always fetch the latest token safely inside the function
+    // Always read the latest auth token before the request is made.
+    token = localStorage.getItem("authToken");
+
     if (!token) {
       document.getElementById("login-dialog").showModal();
       return;
@@ -73,7 +75,7 @@ async function fetchAndRenderMainPage() {
     document.getElementById("total-balance").textContent =
       `RM${totalBalance.toFixed(2)}`;
 
-    renderWallets(walletData);
+    renderWallets(walletData, "wallet-grid");
     renderTransactionTable(transactionData);
     adjustRightPanel();
     updateSlide();
@@ -82,183 +84,209 @@ async function fetchAndRenderMainPage() {
   }
 }
 
-function renderWallets(walletData) {
-  const grid = document.getElementById("wallet-grid");
+function renderWallets(walletData, walletGridId) {
+  const grid = document.getElementById(walletGridId);
+
+  if (!grid) {
+    console.error(`renderWallets: grid "${walletGridId}" was not found.`);
+    return;
+  }
+
   grid.innerHTML = ""; // Clear any placeholders
 
   const template = document.getElementById("wallet-template");
 
-  walletData.forEach((wallet) => {
-    const clone = template.content.cloneNode(true);
+  if (walletData.length === 0) {
+    grid.innerHTML =
+      '<div style="padding: 12px; text-align: center; color: #888;">No wallets found.</div>';
+  } else {
+    walletData.forEach((wallet) => {
+      const clone = template.content.cloneNode(true);
 
-    const link = clone.querySelector(".view-btn");
-    link.href = `wallets.html?id=${wallet.id}`;
-    link.dataset.password = wallet.password;
+      const link = clone.querySelector(".view-btn");
+      link.href = `wallets.html?id=${wallet.id}`;
+      link.dataset.password = wallet.password;
 
-    link.addEventListener("click", (e) => {
-      if (wallet.password !== "") {
+      link.addEventListener("click", (e) => {
+        if (wallet.password !== "") {
+          e.preventDefault();
+          const dialog = document.getElementById("access-dialog");
+          dialog.dataset.link = `wallets.html?id=${wallet.id}`;
+          dialog.dataset.password = wallet.password;
+
+          document.getElementById("access-title").innerHTML =
+            `"${wallet.name}" Wallet Is Locked! <i class="fa-solid fa-lock"></i>`;
+          dialog.showModal();
+        }
+      });
+
+      // Set the name & icon
+      if (wallet.pin === false && wallet.hide === false) {
+        clone.querySelector(".name").textContent = wallet.name;
+      } else if (wallet.pin === true && wallet.hide === false) {
+        clone.querySelector(".name").innerHTML =
+          `${wallet.name} <i class="fa-solid fa-thumbtack"></i>`;
+      } else if (wallet.hide === true) {
+        clone.querySelector(".name").innerHTML =
+          `${wallet.name} <i class="fa-solid fa-eye-slash"></i>`;
+      }
+
+      clone.querySelector(".balance").textContent = `RM ${wallet.balance}`;
+
+      // --- RENAME ACTION ---
+      const renameLink = clone.querySelector(".rename-link");
+      renameLink.addEventListener("click", (e) => {
         e.preventDefault();
-        const dialog = document.getElementById("access-dialog");
-        dialog.dataset.link = `wallets.html?id=${wallet.id}`;
+        const dialog = document.getElementById("rename-dialog");
+        const title = document.getElementById("rename-dialog-title");
+
+        dialog.dataset.walletId = wallet.id;
+        dialog.dataset.walletName = wallet.name;
+        title.textContent = `Rename "${wallet.name}" Wallet`;
+        dialog.showModal();
+      });
+
+      // --- DELETE ACTION ---
+      const deleteLink = clone.querySelector(".delete-link");
+      deleteLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        const dialog = document.getElementById("delete-dialog");
+        const title = document.getElementById("delete-dialog-title");
+
+        dialog.dataset.walletId = wallet.id;
+        dialog.dataset.walletName = wallet.name;
+        title.textContent = `Delete "${wallet.name}" Wallet?`;
+        dialog.showModal();
+      });
+
+      // --- LOCK / UNLOCK ACTION ---
+      const lockLink = clone.querySelector(".lock-link");
+      if (wallet.password !== "") {
+        lockLink.innerHTML = '<i class="fa-solid fa-unlock"></i> Unlock';
+      } else {
+        lockLink.innerHTML = '<i class="fa-solid fa-lock"></i> Lock';
+      }
+
+      lockLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        const dialog = document.getElementById("password-dialog");
+        const title = document.getElementById("password-dialog-title");
+        const saveButton = document.getElementById("btn-save");
+
+        dialog.dataset.walletId = wallet.id;
+        dialog.dataset.walletName = wallet.name;
         dialog.dataset.password = wallet.password;
 
-        document.getElementById("access-title").innerHTML =
-          `"${wallet.name}" Wallet Is Locked! <i class="fa-solid fa-lock"></i>`;
+        if (wallet.password !== "") {
+          title.textContent = `Unlock "${wallet.name}" Wallet`;
+          if (saveButton)
+            saveButton.innerHTML =
+              '<i class="fa-solid fa-unlock"></i> Unlock Wallet';
+        } else {
+          title.textContent = `Lock "${wallet.name}" Wallet`;
+          if (saveButton)
+            saveButton.innerHTML =
+              '<i class="fa-solid fa-lock"></i> Lock Wallet';
+        }
         dialog.showModal();
-      }
-    });
+      });
 
-    // Set the name & pin icon
-    if (wallet.pin === false) {
-      clone.querySelector(".name").textContent = wallet.name;
-    } else if (wallet.pin === true) {
-      clone.querySelector(".name").innerHTML =
-        `${wallet.name} <i class="fa-solid fa-thumbtack"></i>`;
-    }
-
-    clone.querySelector(".balance").textContent = `RM ${wallet.balance}`;
-
-    // --- RENAME ACTION ---
-    const renameLink = clone.querySelector(".rename-link");
-    renameLink.addEventListener("click", (e) => {
-      e.preventDefault();
-      const dialog = document.getElementById("rename-dialog");
-      const title = document.getElementById("rename-dialog-title");
-
-      dialog.dataset.walletId = wallet.id;
-      dialog.dataset.walletName = wallet.name;
-      title.textContent = `Rename "${wallet.name}" Wallet`;
-      dialog.showModal();
-    });
-
-    // --- DELETE ACTION ---
-    const deleteLink = clone.querySelector(".delete-link");
-    deleteLink.addEventListener("click", (e) => {
-      e.preventDefault();
-      const dialog = document.getElementById("delete-dialog");
-      const title = document.getElementById("delete-dialog-title");
-
-      dialog.dataset.walletId = wallet.id;
-      dialog.dataset.walletName = wallet.name;
-      title.textContent = `Delete "${wallet.name}" Wallet?`;
-      dialog.showModal();
-    });
-
-    // --- LOCK / UNLOCK ACTION ---
-    const lockLink = clone.querySelector(".lock-link");
-    if (wallet.password !== "") {
-      lockLink.innerHTML = '<i class="fa-solid fa-unlock"></i> Unlock';
-    } else {
-      lockLink.innerHTML = '<i class="fa-solid fa-lock"></i> Lock';
-    }
-
-    lockLink.addEventListener("click", (e) => {
-      e.preventDefault();
-      const dialog = document.getElementById("password-dialog");
-      const title = document.getElementById("password-dialog-title");
-      const saveButton = document.getElementById("btn-save");
-
-      dialog.dataset.walletId = wallet.id;
-      dialog.dataset.walletName = wallet.name;
-      dialog.dataset.password = wallet.password;
-
-      if (wallet.password !== "") {
-        title.textContent = `Unlock "${wallet.name}" Wallet`;
-        if (saveButton)
-          saveButton.innerHTML =
-            '<i class="fa-solid fa-unlock"></i> Unlock Wallet';
+      // --- CENSOR ACTION ---
+      const censorLink = clone.querySelector(".censor-link");
+      if (wallet.censor == false) {
+        censorLink.innerHTML = '<i class="fa-solid fa-asterisk"></i> Censor';
       } else {
-        title.textContent = `Lock "${wallet.name}" Wallet`;
-        if (saveButton)
-          saveButton.innerHTML = '<i class="fa-solid fa-lock"></i> Lock Wallet';
+        censorLink.innerHTML =
+          '<i class="fa-solid fa-dollar-sign"></i> Uncensor';
       }
-      dialog.showModal();
-    });
 
-    // --- CENSOR ACTION ---
-    const censorLink = clone.querySelector(".censor-link");
-    if (wallet.censor == false) {
-      censorLink.innerHTML = '<i class="fa-solid fa-asterisk"></i> Censor';
-    } else {
-      censorLink.innerHTML = '<i class="fa-solid fa-dollar-sign"></i> Uncensor';
-    }
+      censorLink.addEventListener("click", async (e) => {
+        e.preventDefault();
+        try {
+          const response = await fetch(
+            `http://127.0.0.1:8000/api/censor/${wallet.id}/${token}`,
+            { method: "POST" },
+          );
+          if (!response.ok) {
+            const errorData = await response.json();
+            alert(`Error: ${errorData.detail}`);
+            return;
+          }
 
-    censorLink.addEventListener("click", async (e) => {
-      e.preventDefault();
-      try {
-        const response = await fetch(
-          `http://127.0.0.1:8000/api/censor/${wallet.id}/${token}`,
-          { method: "POST" },
-        );
-        if (!response.ok) {
-          const errorData = await response.json();
-          alert(`Error: ${errorData.detail}`);
-          return;
+          const data = await response.json();
+
+          renderWallets(data.wallets, "wallet-grid");
+          refreshWalletDialog();
+        } catch (error) {
+          console.error("Error updating wallet:", error);
+          alert("An error occurred while saving. Please try again.");
         }
+      });
 
-        const data = await response.json();
+      // --- HIDE ACTION ---
+      const hideLink = clone.querySelector(".hide-link");
 
-        renderWallets(data.wallets);
-      } catch (error) {
-        console.error("Error updating wallet:", error);
-        alert("An error occurred while saving. Please try again.");
+      if (wallet.hide == false) {
+        hideLink.innerHTML = '<i class="fa-solid fa-eye-slash"></i> Hide';
+      } else {
+        hideLink.innerHTML = '<i class="fa-solid fa-eye"></i> Unhide';
       }
-    });
 
-    // --- HIDE ACTION ---
-    const hideLink = clone.querySelector(".hide-link");
-    hideLink.addEventListener("click", async (e) => {
-      e.preventDefault();
-      try {
-        const response = await fetch(
-          `http://127.0.0.1:8000/api/hide/${wallet.id}/${token}`,
-          { method: "POST" },
-        );
-        if (!response.ok) {
-          const errorData = await response.json();
-          alert(`Error: ${errorData.detail}`);
-          return;
+      hideLink.addEventListener("click", async (e) => {
+        e.preventDefault();
+        try {
+          const response = await fetch(
+            `http://127.0.0.1:8000/api/hide/${wallet.id}/${token}`,
+            { method: "POST" },
+          );
+          if (!response.ok) {
+            const errorData = await response.json();
+            alert(`Error: ${errorData.detail}`);
+            return;
+          }
+          const data = await response.json();
+
+          renderWallets(data.wallets, "wallet-grid");
+          refreshWalletDialog();
+        } catch (error) {
+          console.error("Error updating wallet:", error);
+          alert("An error occurred while saving. Please try again.");
         }
-        const data = await response.json();
+      });
 
-        renderWallets(data.wallets);
-      } catch (error) {
-        console.error("Error updating wallet:", error);
-        alert("An error occurred while saving. Please try again.");
+      // --- PIN ACTION ---
+      const pinLink = clone.querySelector(".pin-link");
+      if (wallet.pin == false) {
+        pinLink.innerHTML = '<i class="fa-solid fa-thumbtack"></i> Pin';
+      } else {
+        pinLink.innerHTML = '<i class="fa-solid fa-arrow-down"></i> Unpin';
       }
-    });
 
-    // --- PIN ACTION ---
-    const pinLink = clone.querySelector(".pin-link");
-    if (wallet.pin == false) {
-      pinLink.innerHTML = '<i class="fa-solid fa-thumbtack"></i> Pin';
-    } else {
-      pinLink.innerHTML = '<i class="fa-solid fa-arrow-down"></i> Unpin';
-    }
+      pinLink.addEventListener("click", async (e) => {
+        e.preventDefault();
+        try {
+          const response = await fetch(
+            `http://127.0.0.1:8000/api/pin/${wallet.id}/${token}`,
+            { method: "POST" },
+          );
+          if (!response.ok) {
+            const errorData = await response.json();
+            alert(`Error: ${errorData.detail}`);
+            return;
+          }
+          const data = await response.json();
 
-    pinLink.addEventListener("click", async (e) => {
-      e.preventDefault();
-      try {
-        const response = await fetch(
-          `http://127.0.0.1:8000/api/pin/${wallet.id}/${token}`,
-          { method: "POST" },
-        );
-        if (!response.ok) {
-          const errorData = await response.json();
-          alert(`Error: ${errorData.detail}`);
-          return;
+          renderWallets(data.wallets, "wallet-grid");
+          refreshWalletDialog();
+        } catch (error) {
+          console.error("Error updating wallet:", error);
+          alert("An error occurred while saving. Please try again.");
         }
-        const data = await response.json();
+      });
 
-        renderWallets(data.wallets);
-      } catch (error) {
-        console.error("Error updating wallet:", error);
-        alert("An error occurred while saving. Please try again.");
-      }
+      grid.appendChild(clone);
     });
-
-    grid.appendChild(clone);
-  });
+  }
 }
 function renderTransactionTable(transactionData) {
   // Render Transaction Table
@@ -478,7 +506,8 @@ renameForm.addEventListener("submit", async (event) => {
       return;
     }
     const data = await response.json();
-    renderWallets(data.wallets);
+    renderWallets(data.wallets, "wallet-grid");
+    refreshWalletDialog();
   } catch (error) {
     console.error("Error updating wallet:", error);
     event.preventDefault(); // Stop dialog from closing if backend save failed
@@ -512,7 +541,8 @@ async function deleteWallet() {
       return;
     }
     const data = await response.json();
-    renderWallets(data.wallets);
+    renderWallets(data.wallets, "wallet-grid");
+    refreshWalletDialog();
     deleteDialog2.close();
   } catch (error) {
     console.error("Error updating wallet:", error);
@@ -673,7 +703,8 @@ passwordForm.addEventListener("submit", async (event) => {
       return;
     }
     const data = await response.json();
-    renderWallets(data.wallets);
+    renderWallets(data.wallets, "wallet-grid");
+    refreshWalletDialog();
     // 4. Cleanup and reload page on success
     lockWarningText.innerHTML = "";
     passwordInput.value = "";
@@ -728,7 +759,8 @@ createForm.addEventListener("submit", async (event) => {
       return;
     }
     const data = await response.json();
-    renderWallets(data.wallets);
+    renderWallets(data.wallets, "wallet-grid");
+    refreshWalletDialog();
   } catch (error) {
     console.error("Error updating wallet:", error);
     event.preventDefault(); // Stop dialog from closing if backend save failed
@@ -898,14 +930,15 @@ registerForm.addEventListener("submit", async (event) => {
     // --- STORE THE AUTH TOKEN HERE ---
     // (Make sure "access_token" matches whatever key your FastAPI backend returns)
     localStorage.setItem("authToken", data.access_token);
+    token = data.access_token;
     // 4. Success handling (Clear form and redirect to login or dashboard)
     if (response) {
       remailWarningText.innerHTML = "";
       rpwWarningText.innerHTML = "";
       remailInput.value = "";
       rpasswordInput.value = "";
-      registerDialog.close();
       fetchAndRenderMainPage();
+      registerDialog.close();
     }
   } catch (error) {
     console.error("Error during registration:", error);
@@ -1017,6 +1050,7 @@ loginForm.addEventListener("submit", async (event) => {
 
     // --- STORE THE AUTH TOKEN HERE ---
     localStorage.setItem("authToken", data.access_token);
+    token = data.access_token;
 
     // 4. Success handling (Clear form)
     if (response) {
@@ -1260,7 +1294,7 @@ async function loadPasswords() {
 
     if (data.length === 0) {
       tableDetailsContainer.innerHTML =
-        '<div style="padding: 12px; text-align: center; color: #888;">No passwords found.</div>';
+        '<div style="padding: 12px; text-align: center; color: #888;">No locked wallets found.</div>';
     } else {
       // Loop through backend data and create rows
       data.forEach((pw) => {
@@ -1332,3 +1366,72 @@ applyBtn.addEventListener("click", function () {
   console.log(theme, currentIndex);
   document.getElementById("settings-dialog").close();
 });
+
+// ============= View All Wallets Function ============= //
+const viewAllBtn = document.getElementById("view-all-wallets");
+const walletsDialog = document.getElementById("wallets-dialog");
+
+viewAllBtn.addEventListener("click", async function () {
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      document.getElementById("login-dialog").showModal();
+      return;
+    }
+    const response = await fetch("http://127.0.0.1:8000/api/load-wallets", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Failed to load wallets:", data.detail);
+      return;
+    }
+
+    // Make sure you render your wallets here before opening the dialog
+    renderWallets(data, "all-wallets-grid");
+    walletsDialog.showModal();
+  } catch (error) {
+    console.error("A network error occurred while loading wallets:", error);
+  }
+});
+
+async function refreshWalletDialog() {
+  const walletsDialog = document.getElementById("wallets-dialog");
+
+  if (!walletsDialog || !walletsDialog.open) {
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      document.getElementById("login-dialog").showModal();
+      return;
+    }
+
+    const response = await fetch("http://127.0.0.1:8000/api/load-wallets", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Failed to load wallets:", data.detail);
+      return;
+    }
+
+    renderWallets(data, "all-wallets-grid");
+  } catch (error) {
+    console.error("A network error occurred while loading wallets:", error);
+  }
+}
