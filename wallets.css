@@ -22,8 +22,8 @@
 [data-theme="light"] {
   --bg: #fff5f7; /* Really, really light pink background */
   --card: #ffffff; /* Clean white card background */
-  --inner: #ffe3e8; /* Soft pink tint for inner containers */
-  --accent: #ffcef4; /* Vibrant pink/purple accent */
+  --inner: #ffcef4; /* Soft pink tint for inner containers */
+  --accent: #ffbae2;
   --muted: #64748b; /* Muted gray text */
   --text: #1e293b; /* Dark slate main text for high contrast */
 
@@ -759,4 +759,22 @@ select.dropdown-cat option {
   gap: 4px;
   padding: 4px 0;
   color: var(--text-subtle);
+}
+
+.record-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  color: var(--text-subtle);
+}
+
+.record-details p {
+  display: flex;
+  margin: 0;
+}
+
+.record-value {
+  font-weight: 700;
+  color: var(--text);
 }

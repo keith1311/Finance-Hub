@@ -171,11 +171,61 @@ function renderTransactionTable(transactionData) {
                 <div>${tx.category}</div>
                 <div>${amt}</div>
                 <div>RM ${tx.balance.toFixed(2)}</div>
+                <button class="btn-dlt" style="width: 40px; text-align: center; border-radius: 5px; border-width: 0; margin-right: 10px;" onclick="deleteTransaction(${tx.id})"><i class="fa-solid fa-trash"></i></button>
             `;
+      rowDiv.dataset.transactionId = tx.id; // Store the transaction ID in a data attribute for easy access
 
       tableDetailsContainer.appendChild(rowDiv);
     });
   }
+}
+
+function deleteTransaction(transactionId) {
+  const deleteDialog = document.getElementById("delete-record-dialog");
+  deleteDialog.dataset.transactionId = transactionId;
+  const transactionRow = document.querySelector(
+    `[data-transaction-id="${transactionId}"]`,
+  );
+  const recordValue = Array.from(
+    transactionRow.querySelectorAll("div, button"),
+  ).map((el) => el.textContent.trim());
+
+  document.getElementById("records-date").innerHTML =
+    "Date: " + `&nbsp;<div class="record-value">${recordValue[0]}</div>`;
+  document.getElementById("records-tag").innerHTML =
+    "Tags: " + `&nbsp;<div class="record-value">${recordValue[1]}</div>`;
+  document.getElementById("records-category").innerHTML =
+    "Category: " + `&nbsp;<div class="record-value">${recordValue[2]}</div>`;
+  document.getElementById("records-amount").innerHTML =
+    "Amount: " + `&nbsp;<div class="record-value">${recordValue[3]}</div>`;
+  document.getElementById("records-wallet").innerHTML =
+    "Wallet: " + `&nbsp;<div class="record-value">${recordValue[4]}</div>`;
+  document.getElementById("delete-record-dialog").showModal();
+}
+
+async function deleteTransactionConfirmed() {
+  const deleteDialog = document.getElementById("delete-record-dialog");
+  const transactionId = deleteDialog.dataset.transactionId;
+  const response = await fetch("http://127.0.0.1:8000/api/delete-transaction", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer " + token,
+    },
+    body: JSON.stringify({
+      transactionId: transactionId,
+      walletId: walletId,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    alert(`Error: ${errorData.detail}`);
+    return;
+  }
+
+  fetchAndRenderWalletPage();
+  deleteDialog.close();
 }
 
 // Keep track of active chart instances outside the functions

@@ -120,15 +120,15 @@ function renderWallets(walletData, walletGridId) {
         }
       });
 
-      // Set the name & icon
-      if (wallet.pin === false && wallet.hide === false) {
-        clone.querySelector(".name").textContent = wallet.name;
-      } else if (wallet.pin === true && wallet.hide === false) {
-        clone.querySelector(".name").innerHTML =
-          `${wallet.name} <i class="fa-solid fa-thumbtack"></i>`;
-      } else if (wallet.hide === true) {
+      // Set the name & icon based on strict priority
+      if (wallet.hide) {
         clone.querySelector(".name").innerHTML =
           `${wallet.name} <i class="fa-solid fa-eye-slash"></i>`;
+      } else if (wallet.pin) {
+        clone.querySelector(".name").innerHTML =
+          `${wallet.name} <i class="fa-solid fa-thumbtack"></i>`;
+      } else {
+        clone.querySelector(".name").textContent = wallet.name;
       }
 
       clone.querySelector(".balance").textContent = `RM ${wallet.balance}`;
@@ -320,7 +320,6 @@ function renderTransactionTable(transactionData) {
                 <div>${amt}</div>
                 <div>${tx.wallet_name || tx.wallet_id}</div>
             `;
-
       tableDetailsContainer.appendChild(rowDiv);
     });
   }

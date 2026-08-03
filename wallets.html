@@ -124,6 +124,7 @@
               <div>Category</div>
               <div>Amount</div>
               <div>Balance</div>
+              <div style="flex: 0 0 62px"></div>
             </div>
             <div style="height: 1px; background: #222633; margin: 6px 0"></div>
             <div class="table-scroll">
@@ -482,6 +483,34 @@
         <div class="password-scroll">
           <div class="password-details" id="password-details"></div>
         </div>
+      </div>
+    </dialog>
+    <!-- ====================== Delete Records Dialog ====================== -->
+    <dialog class="dialog-box" id="delete-record-dialog">
+      <h3>Delete this record?</h3>
+      <div class="record-details">
+        <p id="records-date">Date:</p>
+        <p id="records-tag">Tag:</p>
+        <p id="records-category">Category:</p>
+        <p id="records-amount">Amount:</p>
+        <p id="records-wallet">Wallet:</p>
+      </div>
+      <div class="dialog-btn">
+        <button
+          onclick="document.getElementById('delete-record-dialog').close()"
+          class="btn-cancel"
+          type="button"
+        >
+          <i class="fa-solid fa-xmark"></i> No
+        </button>
+        <!-- Changed to type="button" since there's no form here -->
+        <button
+          class="btn-dlt"
+          type="button"
+          onclick="deleteTransactionConfirmed()"
+        >
+          <i class="fa-solid fa-trash-can"></i> Yes
+        </button>
       </div>
     </dialog>
   </body>

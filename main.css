@@ -22,8 +22,8 @@
 [data-theme="light"] {
   --bg: #fff5f7; /* Really, really light pink background */
   --card: #ffffff; /* Clean white card background */
-  --inner: #ffe3e8; /* Soft pink tint for inner containers */
-  --accent: #ffcef4; /* Vibrant pink/purple accent */
+  --inner: #ffcef4; /* Soft pink tint for inner containers */
+  --accent: #ffbae2; /* Vibrant pink/purple accent */
   --muted: #64748b; /* Muted gray text */
   --text: #1e293b; /* Dark slate main text for high contrast */
 
@@ -195,7 +195,7 @@ body {
   position: absolute;
   top: 35px;
   right: 0;
-  background: var(--card);
+  background: var(--bg);
   border: 1px solid var(--dropdown-border);
   border-radius: 8px;
   min-width: 140px;
@@ -749,21 +749,37 @@ select.dropdown-cat option {
 #wallets-dialog {
   width: 90%;
   max-width: 600px;
-  max-height: 85vh; /* Restricts total dialog height */
-  overflow: hidden; /* Hides any overflow outside the main dialog box */
+  max-height: 85vh;
+  overflow: hidden;
   padding: 20px;
   box-sizing: border-box;
 }
 
 .wallet-scroll {
-  max-height: 85vh;
-  overflow-y: auto; /* Enables vertical scrolling */
+  /* Subtract the dialog's top/bottom padding (40px) + space for header (~60px) */
+  max-height: calc(85vh - 100px);
+  overflow-y: auto;
   scrollbar-color: var(--scrollbar-thumb) var(--input-bg);
   scrollbar-width: thin;
-  padding-right: 12px; /* Space between content and scrollbar */
+  padding-right: 12px;
 }
+
 .view-wallets-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
+  margin-bottom: 130px; /* Now this will have room to show up! */
+}
+.wallet-close {
+  position: absolute;
+  top: -1px;
+  right: -2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.wallet-close i {
+  font-size: 32px; /* Adjust this to make the icon bigger or smaller safely */
 }

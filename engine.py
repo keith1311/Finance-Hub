@@ -327,6 +327,7 @@ def render_wallet_page(wallet_id: str):
             db.query(Transactions)
             .filter(Transactions.wallet_id == wallet_id)
             .with_entities(
+                Transactions.id,
                 Transactions.date,
                 Transactions.tags,
                 Transactions.category,
@@ -340,6 +341,7 @@ def render_wallet_page(wallet_id: str):
 
         transaction_data = [
             {
+                "id": tx.id,
                 "date": tx.date.strftime("%Y-%m-%d") if tx.date else None,
                 "tags": tx.tags,
                 "category": tx.category,
@@ -895,6 +897,7 @@ def rename_wallet(data: RenameWallet):
                     "balance": balance,
                     "password": wallet.password,
                     "censor": wallet.censor,
+                    "hide": wallet.hide,
                     "pin": wallet.pin,
                 }
             )
@@ -954,6 +957,7 @@ def delete_wallet(wallet_id: str, token: str):
                     "balance": balance,
                     "password": wallet.password,
                     "censor": wallet.censor,
+                    "hide": wallet.hide,
                     "pin": wallet.pin,
                 }
             )
@@ -1023,6 +1027,7 @@ def lock_wallet(data: LockWallet):
                     "balance": balance,
                     "password": wallet.password,
                     "censor": wallet.censor,
+                    "hide": wallet.hide,
                     "pin": wallet.pin,
                 }
             )
@@ -1097,6 +1102,7 @@ def create_wallet(wallet_name: str, token: str):
                     "balance": balance,
                     "password": wallet.password,
                     "censor": wallet.censor,
+                    "hide": wallet.hide,
                     "pin": wallet.pin,
                 }
             )
@@ -1161,6 +1167,7 @@ def toggle(function: str, wallet_id: str, token: str):
                     "balance": balance,
                     "password": wallet.password,
                     "censor": wallet.censor,
+                    "hide": wallet.hide,
                     "pin": wallet.pin,
                 }
             )
@@ -1380,7 +1387,7 @@ def create_transaction(data: CreateTransaction, authorization: str = Header(None
         transaction_datetime = datetime.combine(data.date, current_time)
 
         # Updating Wallet Balance
-        balance_after = target_wallet.balance + data.amount
+        balance_after = target_wallet.balance - data.amount
         target_wallet.balance = balance_after
 
         # Adding Transaction
@@ -1589,6 +1596,83 @@ def load_wallet_data(token: str):
 
     except Exception as e:
         db.rollback()  # Undo changes if something unexpected fails
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        db.close()
+
+
+class DeleteTransaction(BaseModel):
+    transactionId: str
+    walletId: str
+
+
+@app.post("/api/delete-transaction")
+def delete_transaction(data: DeleteTransaction, authorization: str = Header(None)):
+    db = SessionLocal()
+    try:
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid request.")
+
+        token = authorization.split(" ")[1]
+        user_id = verify_access_token(token=token)
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User not found.")
+
+        target_wallet = (
+            db.query(Wallet)
+            .filter(Wallet.id == data.walletId, Wallet.user_id == user_id)
+            .first()
+        )
+        if not target_wallet:
+            raise HTTPException(status_code=404, detail="Wallet not found.")
+
+        # Fetch the transaction for the authenticated user
+        transaction = (
+            db.query(Transactions)
+            .join(Wallet, Transactions.wallet_id == Wallet.id)
+            .filter(Transactions.id == data.transactionId, Wallet.user_id == user_id)
+            .first()
+        )
+
+        if not transaction:
+            raise HTTPException(status_code=404, detail="Transaction not found.")
+
+        transaction_after = (
+            db.query(Transactions)
+            .filter(
+                Transactions.wallet_id == data.walletId,
+                Transactions.id > data.transactionId,
+            )
+            .order_by(Transactions.date.asc())
+            .all()
+        )
+
+        # Update the balance_after for subsequent transactions
+        for tx in transaction_after:
+            if transaction.category == "Income":
+                tx.balance_after -= transaction.amount
+            else:
+                tx.balance_after += transaction.amount
+
+        # Update the wallet balance
+        if transaction.category == "Income":
+            target_wallet.balance -= transaction.amount
+        else:
+            target_wallet.balance += transaction.amount
+
+        # Delete the transaction
+        db.delete(transaction)
+        db.commit()
+
+        # Fetch updated transaction list safely using the user's ID via Wallet join
+        return
+
+    except HTTPException as he:
+        raise he
+
+    except Exception as e:
+        db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
     finally:
