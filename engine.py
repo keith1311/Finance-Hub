@@ -11,6 +11,7 @@ import jwt
 import os
 from dotenv import load_dotenv
 from passlib.context import CryptContext
+from typing import Optional
 
 app = FastAPI()
 
@@ -30,6 +31,56 @@ load_dotenv()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
+
+
+def recalculate_balance_after(
+    wallet_id: str, target_date: date, target_wallet: Wallet, db
+):
+    # 1. Get the balance of the transaction right before the target date
+    previous_tx = (
+        db.query(Transactions)
+        .filter(
+            Transactions.wallet_id == wallet_id,
+            Transactions.date < target_date,
+        )
+        .order_by(Transactions.date.desc(), Transactions.id.desc())
+        .first()
+    )
+
+    # Set starting balance baseline
+    running_balance = float(previous_tx.balance_after) if previous_tx else 0.0
+
+    # 2. Fetch all transactions from the target date forward
+    update_transactions = (
+        db.query(Transactions)
+        .filter(
+            Transactions.wallet_id == wallet_id,
+            Transactions.date >= target_date,
+        )
+        .order_by(Transactions.date.asc(), Transactions.id.asc())
+        .all()
+    )
+
+    # 3. Loop through and recalculate each row sequentially
+    last_tx = None
+    for tx in update_transactions:
+        amount = float(tx.amount) if tx.amount else 0.0
+
+        # Correctly check the loop item 'tx', not the class model 'Transactions'
+        if tx.category == "Income":
+            running_balance += amount
+        else:
+            running_balance -= amount
+
+        tx.balance_after = running_balance
+        last_tx = tx
+
+    # 4. Update the main wallet's total balance to match the absolute latest balance_after
+    if target_wallet and last_tx:
+        target_wallet.balance = last_tx.balance_after
+
+    # 5. Commit all changes to the database in one batch
+    db.commit()
 
 
 def create_access_token(data: dict):
@@ -123,7 +174,7 @@ def render_main_page(token: str):
                 Transactions.amount,
                 Wallet.name.label("wallet_name"),
             )
-            .order_by(Transactions.date.desc())
+            .order_by(Transactions.date.desc(), Transactions.id.desc())
             .limit(100)
             .all()
         )
@@ -334,7 +385,7 @@ def render_wallet_page(wallet_id: str):
                 Transactions.amount,
                 Transactions.balance_after,
             )
-            .order_by(Transactions.date.desc())
+            .order_by(Transactions.date.desc(), Transactions.id.desc())
             .limit(100)
             .all()
         )
@@ -1325,30 +1376,46 @@ def add_income(data: AddIncome, authorization: str = Header(None)):
         if not target_wallet:
             raise HTTPException(status_code=404, detail="Wallet not found.")
 
-        current_time = datetime.now().time()
-        transaction_datetime = datetime.combine(data.date, current_time)
+        # 2. Check the latest existing transaction date FIRST (before adding the new one)
+        latest_transaction = (
+            db.query(Transactions)
+            .filter(Transactions.wallet_id == data.wallet_id)
+            .order_by(Transactions.date.desc(), Transactions.id.desc())
+            .first()
+        )
 
-        # Updating Wallet Balance
-        balance_after = target_wallet.balance + data.amount
-        target_wallet.balance = balance_after
+        # If you are returning a dictionary or model, ensure the field is just a date
+        formatted_date = data.date.date() if hasattr(data.date, "date") else data.date
 
-        # Adding Transaction
+        # 3. Create the new transaction object (don't calculate balance_after manually yet)
         new_transaction = Transactions(
-            date=transaction_datetime,
+            date=formatted_date,
             tags=data.tag,
             category="Income",
             amount=data.amount,
             wallet_id=data.wallet_id,
-            balance_after=balance_after,
         )
-
         db.add(new_transaction)
-        db.commit()
-        db.refresh(new_transaction)
+        db.flush()  # Flushes to give new_transaction an ID without committing yet
 
+        # 4. Branch based on whether it's backdated or the newest entry
+        if latest_transaction and latest_transaction.date > data.date:
+            # It's backdated! Let the recalculator handle the whole chain safely
+            recalculate_balance_after(data.wallet_id, data.date, target_wallet, db)
+        else:
+            # Fast path: It's today or the newest entry
+            previous_balance = (
+                float(latest_transaction.balance_after) if latest_transaction else 0.0
+            )
+            new_transaction.balance_after = previous_balance + data.amount
+            target_wallet.balance = new_transaction.balance_after
+            db.commit()
+
+        db.refresh(new_transaction)
         return {"message": "Income added successfully"}
 
     except HTTPException as he:
+        db.rollback()
         raise he
 
     except Exception as e:
@@ -1383,30 +1450,46 @@ def create_transaction(data: CreateTransaction, authorization: str = Header(None
         if not target_wallet:
             raise HTTPException(status_code=404, detail="Wallet not found.")
 
-        current_time = datetime.now().time()
-        transaction_datetime = datetime.combine(data.date, current_time)
+        # 2. Check the latest existing transaction date FIRST (before adding the new one)
+        latest_transaction = (
+            db.query(Transactions)
+            .filter(Transactions.wallet_id == data.wallet_id)
+            .order_by(Transactions.date.desc(), Transactions.id.desc())
+            .first()
+        )
 
-        # Updating Wallet Balance
-        balance_after = target_wallet.balance - data.amount
-        target_wallet.balance = balance_after
+        # If you are returning a dictionary or model, ensure the field is just a date
+        formatted_date = data.date.date() if hasattr(data.date, "date") else data.date
 
-        # Adding Transaction
+        # 3. Create the new transaction object
         new_transaction = Transactions(
-            date=transaction_datetime,
+            date=formatted_date,
             tags=data.tag,
             category=data.category,
             amount=data.amount,
             wallet_id=data.wallet_id,
-            balance_after=balance_after,
         )
-
         db.add(new_transaction)
-        db.commit()
-        db.refresh(new_transaction)
+        db.flush()  # Flushes to get an ID without committing yet
 
+        # 4. Branch based on whether it's backdated or the newest entry
+        if latest_transaction and latest_transaction.date > data.date:
+            # It's backdated! Let the recalculator handle the whole chain safely
+            recalculate_balance_after(data.wallet_id, data.date, target_wallet, db)
+        else:
+            # Fast path: It's today or the newest entry (Always an expense/withdrawal here)
+            previous_balance = (
+                float(latest_transaction.balance_after) if latest_transaction else 0.0
+            )
+            new_transaction.balance_after = previous_balance - data.amount
+            target_wallet.balance = new_transaction.balance_after
+            db.commit()
+
+        db.refresh(new_transaction)
         return {"message": "Transaction created successfully"}
 
     except HTTPException as he:
+        db.rollback()
         raise he
 
     except Exception as e:
@@ -1638,42 +1721,145 @@ def delete_transaction(data: DeleteTransaction, authorization: str = Header(None
         if not transaction:
             raise HTTPException(status_code=404, detail="Transaction not found.")
 
-        transaction_after = (
+        # 1. Check if the transaction being deleted is the absolute latest one
+        latest_transaction = (
             db.query(Transactions)
-            .filter(
-                Transactions.wallet_id == data.walletId,
-                Transactions.id > data.transactionId,
-            )
-            .order_by(Transactions.date.asc())
-            .all()
+            .filter(Transactions.wallet_id == data.walletId)
+            .order_by(Transactions.date.desc(), Transactions.id.desc())
+            .first()
         )
 
-        # Update the balance_after for subsequent transactions
-        for tx in transaction_after:
-            if transaction.category == "Income":
-                tx.balance_after -= transaction.amount
-            else:
-                tx.balance_after += transaction.amount
+        is_latest = latest_transaction and latest_transaction.id == transaction.id
 
-        # Update the wallet balance
-        if transaction.category == "Income":
-            target_wallet.balance -= transaction.amount
-        else:
-            target_wallet.balance += transaction.amount
+        # 2. Save info needed before deleting
+        target_date = transaction.date
+        wallet_id = transaction.wallet_id
 
-        # Delete the transaction
+        # Delete the target transaction
         db.delete(transaction)
-        db.commit()
+        db.flush()  # Flush so the deletion is staged in memory
 
-        # Fetch updated transaction list safely using the user's ID via Wallet join
-        return
+        # 3. Branch: Fast path if deleting the latest, otherwise full recalculation
+        if is_latest:
+            # Fast path: Just grab the new latest transaction (if any left) and adjust the wallet
+            new_latest = (
+                db.query(Transactions)
+                .filter(Transactions.wallet_id == wallet_id)
+                .order_by(Transactions.date.desc(), Transactions.id.desc())
+                .first()
+            )
+
+            if new_latest:
+                target_wallet.balance = new_latest.balance_after
+            else:
+                target_wallet.balance = 0.0
+
+            db.commit()
+        else:
+            # Slow path: It's an older/backdated deletion, ripple the math forward
+            recalculate_balance_after(wallet_id, target_date, target_wallet, db)
+
+        return {"message": "Transaction deleted successfully"}
 
     except HTTPException as he:
+        db.rollback()
         raise he
 
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        db.close()
+
+
+class FilterTransactions(BaseModel):
+    date: Optional[str] = None
+    tag: Optional[str] = None
+    category: Optional[str] = None
+    operator: Optional[str] = None  # e.g., "<", "<=", "=", ">=", ">"
+    amount: Optional[float] = None  # Coming in as string
+    wallet: Optional[str] = None
+
+
+@app.post("/api/get-filter")
+def Filter_Transactions(data: FilterTransactions, authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid request.")
+
+    token = authorization.split(" ")[1]
+    user_id = verify_access_token(token=token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    db = SessionLocal()
+    try:
+        # 1. Start the traditional query scoped to the user
+        query = (
+            db.query(Transactions)
+            .join(Wallet, Transactions.wallet_id == Wallet.id)
+            .filter(Wallet.user_id == user_id)
+            .with_entities(
+                Transactions.date,
+                Transactions.tags,
+                Transactions.category,
+                Transactions.amount,
+                Wallet.name.label("wallet_name"),
+            )
+        )
+
+        # 2. Conditionally stack filters using .filter()
+        if data.date is not None:
+            query = query.filter(Transactions.date == data.date)
+
+        if data.tag is not None:
+            query = query.filter(Transactions.tags == data.tag)
+
+        if data.category is not None:
+            query = query.filter(Transactions.category.ilike(f"%{data.category}%"))
+
+        if data.wallet is not None:
+            query = query.filter(Wallet.name == data.wallet)
+
+        # 3. Handle stringified amount and symbol operators
+        if data.amount is not None:
+            try:
+                numeric_amount = float(data.amount)
+            except (ValueError, TypeError):
+                raise HTTPException(
+                    status_code=400, detail="Amount must be a valid number."
+                )
+
+            op = data.operator if data.operator else "="
+
+            if op == "=":
+                query = query.filter(Transactions.amount == numeric_amount)
+            elif op == ">":
+                query = query.filter(Transactions.amount > numeric_amount)
+            elif op == ">=":
+                query = query.filter(Transactions.amount >= numeric_amount)
+            elif op == "<":
+                query = query.filter(Transactions.amount < numeric_amount)
+            elif op == "<=":
+                query = query.filter(Transactions.amount <= numeric_amount)
+            else:
+                raise HTTPException(status_code=400, detail=f"Invalid operator: {op}")
+
+        # 4. Fetch results
+        results = query.order_by(Transactions.date.desc(), Transactions.id.desc()).all()
+
+        transaction_data = []
+        for tx in results:
+            transaction_data.append(
+                {
+                    "date": tx.date.strftime("%Y-%m-%d"),
+                    "tags": tx.tags,
+                    "category": tx.category,
+                    "amount": tx.amount,
+                    "wallet_name": tx.wallet_name,
+                }
+            )
+        return transaction_data
 
     finally:
         db.close()

@@ -698,6 +698,7 @@ createTransaction.addEventListener("click", (e) => {
 const incomeDialog = document.getElementById("income-dialog");
 const incomeForm = document.getElementById("income-form");
 const incDateInput = document.getElementById("income-date");
+const incDateWarning = document.getElementById("inc-date-warning-text");
 const incTagInput = document.getElementById("income-tag");
 const incTagWarning = document.getElementById("inc-tag-warning-text");
 const incAmtInput = document.getElementById("income-amt");
@@ -705,7 +706,7 @@ const incAmtWarning = document.getElementById("inc-amt-warning-text");
 
 incomeForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-
+  const today = new Date().toLocaleDateString("en-CA");
   const date = incDateInput.value;
   const tag = incTagInput.value
     .trim() // Remove spaces from the very beginning and end
@@ -714,10 +715,19 @@ incomeForm.addEventListener("submit", async (event) => {
     .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize the first letter of every word
   const amount = incAmtInput.value;
 
+  if (date > today) {
+    incDateInput.value = today;
+    incDateWarning.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Date cannot be in the future.';
+    incTagWarning.innerHTML = "";
+    incAmtWarning.innerHTML = "";
+    return;
+  }
   if (tag === "") {
     incTagWarning.innerHTML =
       '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
     incAmtWarning.innerHTML = "";
+    incDateWarning.innerHTML = "";
 
     return;
   }
@@ -725,6 +735,7 @@ incomeForm.addEventListener("submit", async (event) => {
     incAmtWarning.innerHTML =
       '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
     incTagWarning.innerHTML = "";
+    incDateWarning.innerHTML = "";
     return;
   }
 
@@ -757,6 +768,7 @@ incomeForm.addEventListener("submit", async (event) => {
     }
 
     // Success: Reset form and close dialog
+    incDateWarning.innerHTML = "*This is optional.";
     incAmtWarning.innerHTML = "";
     incTagWarning.innerHTML = "";
     incomeForm.reset();
@@ -773,6 +785,7 @@ incomeForm.addEventListener("submit", async (event) => {
 const transactionDialog = document.getElementById("transaction-dialog");
 const transactionForm = document.getElementById("transaction-form");
 const tranDateInput = document.getElementById("transaction-date");
+const tranDateWarning = document.getElementById("tran-date-warning-text");
 const tranTagInput = document.getElementById("transaction-tag");
 const tranTagWarning = document.getElementById("tran-tag-warning-text");
 const tranCatInput = document.getElementById("transaction-cat");
@@ -782,6 +795,7 @@ const tranAmtWarning = document.getElementById("tran-amt-warning-text");
 transactionForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
+  const today = new Date().toLocaleDateString("en-CA");
   const date = tranDateInput.value;
   const tag = tranTagInput.value
     .trim()
@@ -791,16 +805,27 @@ transactionForm.addEventListener("submit", async (event) => {
   const category = tranCatInput.value;
   const amount = tranAmtInput.value;
 
+  if (date > today) {
+    tranDateInput.value = today;
+    tranDateWarning.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Date cannot be in the future.';
+    tranTagWarning.innerHTML = "";
+    tranAmtWarning.innerHTML = "";
+    return;
+  }
+
   if (tag === "") {
     tranTagWarning.innerHTML =
       '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
     tranAmtWarning.innerHTML = "";
+    tranDateWarning.innerHTML = "";
     return;
   }
   if (amount === "") {
     tranAmtWarning.innerHTML =
       '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
     tranTagWarning.innerHTML = "";
+    tranDateWarning.innerHTML = "";
     return;
   }
 

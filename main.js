@@ -76,7 +76,7 @@ async function fetchAndRenderMainPage() {
       `RM${totalBalance.toFixed(2)}`;
 
     renderWallets(walletData, "wallet-grid");
-    renderTransactionTable(transactionData);
+    renderTransactionTable(transactionData, "table-details");
     adjustRightPanel();
     updateSlide();
   } catch (error) {
@@ -288,9 +288,9 @@ function renderWallets(walletData, walletGridId) {
     });
   }
 }
-function renderTransactionTable(transactionData) {
+function renderTransactionTable(transactionData, tableContainer) {
   // Render Transaction Table
-  const tableDetailsContainer = document.getElementById("table-details");
+  const tableDetailsContainer = document.getElementById(tableContainer);
 
   // Clear the placeholder text
   tableDetailsContainer.innerHTML = "";
@@ -1434,3 +1434,61 @@ async function refreshWalletDialog() {
     console.error("A network error occurred while loading wallets:", error);
   }
 }
+
+// ============= Filter Function ============= //
+const openFilter = document.getElementById("open-filter");
+const filterDialog = document.getElementById("filter-dialog");
+const filterForm = document.getElementById("filter-form");
+
+openFilter.addEventListener("click", function () {
+  const filterDetails = document.getElementById("filter-details");
+
+  filterDetails.innerHTML =
+    '<div style="padding: 12px; text-align: center; color: #888;">No transactions found.</div>';
+  filterDialog.showModal();
+});
+const inputDateFilter = document.getElementById("filter-date");
+const inputTagFilter = document.getElementById("filter-tag");
+const inputCatFilter = document.getElementById("filter-cat");
+const operatorFilter = document.getElementById("operator");
+const inputAmountFilter = document.getElementById("filter-amount");
+const inputWalletFilter = document.getElementById("filter-wallet");
+
+filterForm.addEventListener("submit", async function (event) {
+  event.preventDefault();
+
+  const date = inputDateFilter.value;
+  const tag = inputTagFilter.value;
+  const category = inputCatFilter.value;
+  const operator = operatorFilter.value;
+  const amount = inputAmountFilter.value;
+  const wallet = inputWalletFilter.value;
+
+  try {
+    const response = await fetch("http://127.0.0.1:8000/api/get-filter", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        date: date || null,
+        tag: tag || null,
+        category: category || null,
+        operator: operator || null,
+        amount: amount || null,
+        wallet: wallet || null,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch filtered transactions");
+    }
+
+    const data = await response.json();
+
+    renderTransactionTable(data, "filter-details");
+  } catch (error) {
+    console.error("Error:", error);
+  }
+});

@@ -186,20 +186,11 @@
           <label for="income-date">Choose A Date</label>
           <input type="date" id="income-date" name="income-date" />
           <p
-            style="
-              color: var(--muted);
-              font-size: 13px;
-              margin-top: -6px;
-              margin-left: 5px;
-              margin-bottom: -12px;
-            "
+            style="margin-bottom: 2px"
+            class="warning-text"
             id="inc-date-warning-text"
-          >
-            *This is optional.
-          </p>
-        </div>
+          ></p>
 
-        <div class="input-group">
           <label for="income-tag">Enter Tags</label>
           <input
             type="text"
@@ -228,6 +219,7 @@
               document.getElementById('income-date').value = '';
               document.getElementById('income-tag').value = '';
               document.getElementById('income-amt').value = '';
+              document.getElementById('inc-date-warning-text').innerHTML = '';
               document.getElementById('inc-tag-warning-text').innerHTML = '';
               document.getElementById('inc-amt-warning-text').innerHTML = '';
               document.getElementById('income-dialog').close();
@@ -253,20 +245,11 @@
           <label for="transaction-date">Choose A Date</label>
           <input type="date" id="transaction-date" name="transaction-date" />
           <p
-            style="
-              color: var(--muted);
-              font-size: 13px;
-              margin-top: -6px;
-              margin-left: 5px;
-              margin-bottom: -12px;
-            "
+            style="margin-bottom: 2px"
+            class="warning-text"
             id="tran-date-warning-text"
-          >
-            *This is optional.
-          </p>
-        </div>
+          ></p>
 
-        <div class="input-group">
           <label for="transaction-tag">Enter Tags</label>
           <input
             type="text"
