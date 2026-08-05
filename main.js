@@ -1458,28 +1458,40 @@ filterForm.addEventListener("submit", async function (event) {
   event.preventDefault();
 
   const date = inputDateFilter.value;
-  const tag = inputTagFilter.value;
+  const tag = inputTagFilter.value
+    .trim() // Remove spaces from the very beginning and end
+    .replace(/\s+/g, " ") // Replace multiple consecutive spaces in between words with a single space
+    .toLowerCase() // Convert everything to lowercase first
+    .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize the first letter of every word
+
   const category = inputCatFilter.value;
   const operator = operatorFilter.value;
   const amount = inputAmountFilter.value;
-  const wallet = inputWalletFilter.value;
+  const wallet = inputWalletFilter.value
+    .trim() // Remove spaces from the very beginning and end
+    .replace(/\s+/g, " ") // Replace multiple consecutive spaces in between words with a single space
+    .toLowerCase() // Convert everything to lowercase first
+    .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize the first letter of every word
 
   try {
-    const response = await fetch("http://127.0.0.1:8000/api/get-filter", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+    const response = await fetch(
+      "http://127.0.0.1:8000/api/get-filter/" + "main",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          date: date || null,
+          tag: tag || null,
+          category: category || null,
+          operator: operator || null,
+          amount: amount || null,
+          wallet: wallet || null,
+        }),
       },
-      body: JSON.stringify({
-        date: date || null,
-        tag: tag || null,
-        category: category || null,
-        operator: operator || null,
-        amount: amount || null,
-        wallet: wallet || null,
-      }),
-    });
+    );
 
     if (!response.ok) {
       throw new Error("Failed to fetch filtered transactions");

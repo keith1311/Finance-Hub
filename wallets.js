@@ -64,6 +64,7 @@ let metricsData = {
 };
 
 let walletId = "";
+let walletName = "";
 
 async function fetchAndRenderWalletPage() {
   // Always read the latest auth token before making the request.
@@ -129,10 +130,12 @@ async function fetchAndRenderWalletPage() {
 
     metricsData.yearly.percentage = responseData[28];
     metricsData.yearly.nature = responseData[29];
-    document.getElementById("title").textContent = header.name;
+
+    walletName = header.name;
+    document.getElementById("title").textContent = walletName;
     document.getElementById("total-balance").textContent =
       `RM${header.balance.toFixed(2)}`;
-    renderTransactionTable(transactionData);
+    renderTransactionTable(transactionData, "table-details");
     adjustCharts();
   } catch (error) {
     console.error("Error fetching wallet data:", error);
@@ -141,9 +144,9 @@ async function fetchAndRenderWalletPage() {
 
 fetchAndRenderWalletPage();
 
-function renderTransactionTable(transactionData) {
+function renderTransactionTable(transactionData, tableContainer) {
   // Render Transaction Table
-  const tableDetailsContainer = document.getElementById("table-details");
+  const tableDetailsContainer = document.getElementById(tableContainer);
 
   // Clear the placeholder text
   tableDetailsContainer.innerHTML = "";
@@ -199,7 +202,7 @@ function deleteTransaction(transactionId) {
   document.getElementById("records-amount").innerHTML =
     "Amount: " + `&nbsp;<div class="record-value">${recordValue[3]}</div>`;
   document.getElementById("records-wallet").innerHTML =
-    "Wallet: " + `&nbsp;<div class="record-value">${recordValue[4]}</div>`;
+    "Wallet: " + `&nbsp;<div class="record-value">${walletName}</div>`;
   document.getElementById("delete-record-dialog").showModal();
 }
 
@@ -1170,3 +1173,108 @@ applyBtn.addEventListener("click", function () {
   console.log(theme, currentIndex);
   document.getElementById("settings-dialog").close();
 });
+
+// ============= Filter Function ============= //
+const openFilter = document.getElementById("open-filter");
+const filterDialog = document.getElementById("filter-dialog");
+const filterForm = document.getElementById("filter-form");
+
+openFilter.addEventListener("click", function () {
+  const filterDetails = document.getElementById("filter-details");
+
+  filterDetails.innerHTML =
+    '<div style="padding: 12px; text-align: center; color: #888;">No transactions found.</div>';
+  filterDialog.showModal();
+});
+const inputDateFilter = document.getElementById("filter-date");
+const inputTagFilter = document.getElementById("filter-tag");
+const inputCatFilter = document.getElementById("filter-cat");
+const operatorFilter = document.getElementById("operator");
+const inputAmountFilter = document.getElementById("filter-amount");
+const inputBalanceFilter = document.getElementById("filter-balance");
+
+filterForm.addEventListener("submit", async function (event) {
+  event.preventDefault();
+
+  const date = inputDateFilter.value;
+  const tag = inputTagFilter.value
+    .trim() // Remove spaces from the very beginning and end
+    .replace(/\s+/g, " ") // Replace multiple consecutive spaces in between words with a single space
+    .toLowerCase() // Convert everything to lowercase first
+    .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize the first letter of every word
+
+  const category = inputCatFilter.value;
+  const operator = operatorFilter.value;
+  const amount = inputAmountFilter.value;
+  const balanceAfter = inputBalanceFilter.value;
+
+  try {
+    const response = await fetch(
+      "http://127.0.0.1:8000/api/get-filter/" + "wallet",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          date: date || null,
+          tag: tag || null,
+          category: category || null,
+          operator: operator || null,
+          amount: amount || null,
+          wallet_id: walletId || null,
+          balance_after: balanceAfter || null,
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch filtered transactions");
+    }
+
+    const data = await response.json();
+
+    renderFilterTable(data, "filter-details");
+  } catch (error) {
+    console.error("Error:", error);
+  }
+});
+
+function renderFilterTable(transactionData, tableContainer) {
+  // Render Transaction Table
+  const tableDetailsContainer = document.getElementById(tableContainer);
+
+  // Clear the placeholder text
+  tableDetailsContainer.innerHTML = "";
+
+  if (transactionData.length === 0) {
+    tableDetailsContainer.innerHTML =
+      '<div style="padding: 12px; text-align: center; color: #888;">No transactions found.</div>';
+  } else {
+    transactionData.forEach((tx) => {
+      const rowDiv = document.createElement("div");
+      // Add a class name for your row styling (e.g., flex layout matching your headers)
+      rowDiv.className = "table-row-item";
+
+      let amt = "";
+
+      if (tx.category === "Income") {
+        amt = `+ RM ${tx.amount.toFixed(2)}`;
+      } else {
+        amt = `- RM ${tx.amount.toFixed(2)}`;
+      }
+
+      rowDiv.innerHTML = `
+                <div>${tx.date}</div>
+                <div>${tx.tags || "-"}</div>
+                <div>${tx.category}</div>
+                <div>${amt}</div>
+                <div>RM ${tx.balance.toFixed(2)}</div>
+            `;
+      rowDiv.dataset.transactionId = tx.id; // Store the transaction ID in a data attribute for easy access
+
+      tableDetailsContainer.appendChild(rowDiv);
+    });
+  }
+}

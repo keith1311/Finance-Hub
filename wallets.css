@@ -778,3 +778,29 @@ select.dropdown-cat option {
   font-weight: 700;
   color: var(--text);
 }
+
+#filter-dialog {
+  width: 90vw;
+  max-width: 1500px; /* This keeps it from getting too wide on desktop */
+  max-height: 90vh;
+  padding: 30px 24px;
+  background-color: var(--card-bg, #1e293b); /* Matches your dark theme */
+  color: var(--text, #ffffff);
+  border: 1px solid var(--input-border, #334155);
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  overflow-y: hidden;
+}
+
+/* Ensure the inner inputs stack vertically and fill the width */
+.filter-input {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end; /* Aligns the bottom of inputs nicely */
+}
+
+.filter-input .input-group {
+  flex: 1 1 200px; /* Allows inputs to grow/shrink, with a minimum width of 200px before wrapping */
+}

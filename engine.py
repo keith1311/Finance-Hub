@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from database import SessionLocal
 from tables import Transactions, Wallet, Users, Access
 from datetime import datetime, date, timedelta
-from sqlalchemy import func, extract
+from sqlalchemy import func, extract, or_
 from pydantic import BaseModel
 import calendar
 import jwt
@@ -1780,10 +1780,14 @@ class FilterTransactions(BaseModel):
     operator: Optional[str] = None  # e.g., "<", "<=", "=", ">=", ">"
     amount: Optional[float] = None  # Coming in as string
     wallet: Optional[str] = None
+    balance_after: Optional[str] = None
+    wallet_id: Optional[str] = None
 
 
-@app.post("/api/get-filter")
-def Filter_Transactions(data: FilterTransactions, authorization: str = Header(None)):
+@app.post("/api/get-filter/{origin}")
+def filter_transactions(
+    data: FilterTransactions, origin: str, authorization: str = Header(None)
+):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid request.")
 
@@ -1804,16 +1808,27 @@ def Filter_Transactions(data: FilterTransactions, authorization: str = Header(No
                 Transactions.tags,
                 Transactions.category,
                 Transactions.amount,
+                Transactions.balance_after,
                 Wallet.name.label("wallet_name"),
             )
         )
 
         # 2. Conditionally stack filters using .filter()
+
+        if data.wallet_id is not None:
+            query = query.filter(Transactions.wallet_id == data.wallet_id)
+
         if data.date is not None:
             query = query.filter(Transactions.date == data.date)
 
-        if data.tag is not None:
-            query = query.filter(Transactions.tags == data.tag)
+        if data.tag is not None and data.tag.strip() != "":
+            # Split by comma, clean up each tag's spaces
+            tag_list = [t.strip() for t in data.tag.split(",") if t.strip()]
+
+            if tag_list:
+                # Build an OR condition: matches tag1 OR tag2 OR tag3...
+                tag_conditions = [Transactions.tags.ilike(f"%{t}%") for t in tag_list]
+                query = query.filter(or_(*tag_conditions))
 
         if data.category is not None:
             query = query.filter(Transactions.category.ilike(f"%{data.category}%"))
@@ -1845,20 +1860,36 @@ def Filter_Transactions(data: FilterTransactions, authorization: str = Header(No
             else:
                 raise HTTPException(status_code=400, detail=f"Invalid operator: {op}")
 
+        if data.balance_after is not None:
+            query = query.filter(Transactions.balance_after == data.balance_after)
+
         # 4. Fetch results
         results = query.order_by(Transactions.date.desc(), Transactions.id.desc()).all()
 
         transaction_data = []
-        for tx in results:
-            transaction_data.append(
-                {
-                    "date": tx.date.strftime("%Y-%m-%d"),
-                    "tags": tx.tags,
-                    "category": tx.category,
-                    "amount": tx.amount,
-                    "wallet_name": tx.wallet_name,
-                }
-            )
+
+        if origin == "main":
+            for tx in results:
+                transaction_data.append(
+                    {
+                        "date": tx.date.strftime("%Y-%m-%d"),
+                        "tags": tx.tags,
+                        "category": tx.category,
+                        "amount": tx.amount,
+                        "wallet_name": tx.wallet_name,
+                    }
+                )
+        elif origin == "wallet":
+            for tx in results:
+                transaction_data.append(
+                    {
+                        "date": tx.date.strftime("%Y-%m-%d"),
+                        "tags": tx.tags,
+                        "category": tx.category,
+                        "amount": tx.amount,
+                        "balance": tx.balance_after,
+                    }
+                )
         return transaction_data
 
     finally:
