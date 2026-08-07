@@ -17,6 +17,7 @@
   --warning: #e74c3c; /* Warning text color */
   --danger: #a60000; /* Delete button background */
   --chart-bg: linear-gradient(180deg, #0c0f12, #0b0e11);
+  --calender: invert(1);
 }
 
 [data-theme="light"] {
@@ -31,11 +32,13 @@
   --input-bg: #ffffff;
   --input-border: #f472b6; /* Soft pink border for inputs */
   --dialog-bg: #ffffff;
+  --scrollbar-thumb: #c6c8cb;
   --button-muted: #f1f5f9;
   --button-hover: #ffb1e2;
   --warning: #dc2626;
   --danger: #ef4444;
   --chart-bg: linear-gradient(180deg, #ffbff3, #ffeefe);
+  --calender: invert(0);
 }
 * {
   box-sizing: border-box;
@@ -545,7 +548,7 @@ dialog.dialog-box h3 {
 .dialog-btn2 {
   display: flex;
   justify-content: flex-start;
-  gap: 115px;
+  gap: 130px;
 }
 
 .dialog-btn button,
@@ -577,6 +580,11 @@ dialog.dialog-box h3 {
   color: var(--text);
 }
 
+.to-register {
+  background-color: var(--accent);
+  color: var(--text);
+}
+
 .btn-dlt:hover,
 .btn-save:hover,
 .to-register:hover {
@@ -590,7 +598,7 @@ dialog.dialog-box h3 {
 }
 
 .hidden {
-  display: none;
+  display: none !important;
 }
 
 #login-dialog[open]::backdrop {
@@ -673,8 +681,18 @@ select.dropdown-cat option {
 
 .close {
   position: absolute;
-  top: -9px;
-  right: -18px;
+  top: 0px;
+  right: 0px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.adjust {
+  position: absolute;
+  top: -2px !important;
+  right: -2px !important;
   background: none;
   border: none;
   cursor: pointer;
@@ -789,9 +807,9 @@ select.dropdown-cat option {
   max-width: 1500px; /* This keeps it from getting too wide on desktop */
   max-height: 90vh;
   padding: 30px 24px;
-  background-color: var(--card-bg, #1e293b); /* Matches your dark theme */
-  color: var(--text, #ffffff);
-  border: 1px solid var(--input-border, #334155);
+  background-color: var(--dialog-bg); /* Matches your dark theme */
+  color: var(--text);
+  border: none;
   border-radius: 16px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
   overflow-y: hidden;
@@ -840,7 +858,12 @@ select.dropdown-cat option {
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
+  filter: var(--calender);
+  cursor: pointer;
+}
+
+input[type="password"]::-ms-reveal {
+  filter: var(--calender);
   cursor: pointer;
 }
 

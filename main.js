@@ -34,22 +34,22 @@ let yearlyTotal = 0.0;
 fetchAndRenderMainPage();
 
 async function fetchAndRenderMainPage() {
+  // Always read the latest auth token before the request is made.
+  token = localStorage.getItem("authToken");
+  console.log(token);
+  if (!token || token === "undefined") {
+    document.getElementById("login-dialog").showModal();
+    return;
+  }
   try {
-    // Always read the latest auth token before the request is made.
-    token = localStorage.getItem("authToken");
-
-    if (!token) {
-      document.getElementById("login-dialog").showModal();
-      return;
-    }
-
     // 2. Fetch data from your Python API
-    const response = await fetch(
-      "http://127.0.0.1:8000/api/render_main_page/" + token,
-      {
-        method: "POST",
+    const response = await fetch("http://127.0.0.1:8000/api/render_main_page", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
       },
-    );
+    });
 
     if (!response.ok) {
       throw new Error("Server responded with status " + response.status);
@@ -74,7 +74,6 @@ async function fetchAndRenderMainPage() {
     // Update the total balance display
     document.getElementById("total-balance").textContent =
       `RM${totalBalance.toFixed(2)}`;
-
     renderWallets(walletData, "wallet-grid");
     renderTransactionTable(transactionData, "table-details");
     adjustRightPanel();
@@ -97,8 +96,11 @@ function renderWallets(walletData, walletGridId) {
   const template = document.getElementById("wallet-template");
 
   if (walletData.length === 0) {
-    grid.innerHTML =
-      '<div style="padding: 12px; text-align: center; color: #888;">No wallets found.</div>';
+    grid.innerHTML = `
+      <div style="grid-column: 1 / -1; padding: 24px; text-align: center; color: #888;">
+        No wallets found.
+      </div>
+    `;
   } else {
     walletData.forEach((wallet) => {
       const clone = template.content.cloneNode(true);
@@ -204,8 +206,17 @@ function renderWallets(walletData, walletGridId) {
         e.preventDefault();
         try {
           const response = await fetch(
-            `http://127.0.0.1:8000/api/censor/${wallet.id}/${token}`,
-            { method: "POST" },
+            `http://127.0.0.1:8000/api/toggle/censor`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + token,
+              },
+              body: JSON.stringify({
+                wallet_id: wallet.id,
+              }),
+            },
           );
           if (!response.ok) {
             const errorData = await response.json();
@@ -236,8 +247,17 @@ function renderWallets(walletData, walletGridId) {
         e.preventDefault();
         try {
           const response = await fetch(
-            `http://127.0.0.1:8000/api/hide/${wallet.id}/${token}`,
-            { method: "POST" },
+            `http://127.0.0.1:8000/api/toggle/hide`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + token,
+              },
+              body: JSON.stringify({
+                wallet_id: wallet.id,
+              }),
+            },
           );
           if (!response.ok) {
             const errorData = await response.json();
@@ -265,10 +285,16 @@ function renderWallets(walletData, walletGridId) {
       pinLink.addEventListener("click", async (e) => {
         e.preventDefault();
         try {
-          const response = await fetch(
-            `http://127.0.0.1:8000/api/pin/${wallet.id}/${token}`,
-            { method: "POST" },
-          );
+          const response = await fetch(`http://127.0.0.1:8000/api/toggle/pin`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + token,
+            },
+            body: JSON.stringify({
+              wallet_id: wallet.id,
+            }),
+          });
           if (!response.ok) {
             const errorData = await response.json();
             alert(`Error: ${errorData.detail}`);
@@ -489,11 +515,11 @@ renameForm.addEventListener("submit", async (event) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
       },
       body: JSON.stringify({
         walletId: walletId,
         newName: newName,
-        token: token,
       }),
     });
 
@@ -528,9 +554,13 @@ async function deleteWallet() {
   try {
     // 2. Send the POST request to your FastAPI backend
     const response = await fetch(
-      "http://127.0.0.1:8000/api/delete-wallet/" + walletId + token,
+      "http://127.0.0.1:8000/api/delete-wallet/" + walletId,
       {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token,
+        },
       },
     );
 
@@ -687,6 +717,7 @@ passwordForm.addEventListener("submit", async (event) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
       },
       body: JSON.stringify({
         walletId: walletId,
@@ -742,11 +773,12 @@ createForm.addEventListener("submit", async (event) => {
   // 3. POST TO BACKEND (via fetch)
   try {
     const response = await fetch(
-      `http://127.0.0.1:8000/api/create-wallet/${walletName}/${token}`,
+      `http://127.0.0.1:8000/api/create-wallet/${walletName}`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: "Bearer " + token,
         },
       },
     );
@@ -1082,12 +1114,13 @@ openSettings.addEventListener("click", async (e) => {
       return;
     }
 
-    const response = await fetch(
-      "http://127.0.0.1:8000/api/render-settings/" + token,
-      {
-        method: "POST",
+    const response = await fetch("http://127.0.0.1:8000/api/render-settings", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
       },
-    );
+    });
 
     const data = await response.json();
 
@@ -1099,7 +1132,6 @@ openSettings.addEventListener("click", async (e) => {
     // Extract values from the backend response dictionary
     const email = data.email;
     const pfp = data.profile_picture;
-    const lockedWallets = data.locked_wallets;
 
     // Update settings UI elements
     document.getElementById("settings-email").textContent = email;
@@ -1107,6 +1139,23 @@ openSettings.addEventListener("click", async (e) => {
     const pfpElement = document.getElementById("settings-pfp");
 
     pfpElement.src = "http://127.0.0.1:8000/uploads/" + pfp;
+
+    if (token) {
+      const whiteList = document.getElementById("whitelist-box");
+      const close = document.getElementById("close");
+
+      // Paste your exact expected token here
+      const myToken =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjVkODAwMzhlLWNlMGItNDA4MC05MWUxLWJlY2ZhYjdmNWZiZCJ9.kSwY8MbHXdEY6OlnHVcbnrozS3q5XNTOlq3yu4CcbxM";
+
+      if (!token || token.trim() !== myToken) {
+        whiteList.classList.add("hidden"); // Hide it if it's not yours or missing
+        close.classList.add("adjust");
+      } else {
+        whiteList.classList.remove("hidden"); // Show it only if it's an exact match
+        close.classList.remove("adjust");
+      }
+    }
 
     // Set dropdown selections based on current active variables
     themesInput.value = theme; // "Light" or "Dark"
@@ -1417,7 +1466,6 @@ async function refreshWalletDialog() {
     const response = await fetch("http://127.0.0.1:8000/api/load-wallets", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         Authorization: "Bearer " + token,
       },
     });
@@ -1502,5 +1550,49 @@ filterForm.addEventListener("submit", async function (event) {
     renderTransactionTable(data, "filter-details");
   } catch (error) {
     console.error("Error:", error);
+  }
+});
+
+// ============= Whitelist Function ============= //
+const whitelistBtn = document.getElementById("whitelist-btn");
+const whitelistEmail = document.getElementById("whitelist-email");
+
+whitelistBtn.addEventListener("click", async function () {
+  event.preventDefault();
+  // 1. Added async here
+  const email = whitelistEmail.value.trim();
+
+  if (!email) {
+    alert("Please enter an email address.");
+    return;
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    alert("Please enter a valid email address format.");
+    return;
+  }
+
+  try {
+    const response = await fetch("http://127.0.0.1:8000/api/whitelist-email/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ email: email }), // 2. Added body so backend receives the email
+    });
+
+    if (!response.ok) {
+      const data = await response.json(); // Added parentheses ()
+      alert(`${data.detail}`); // Wrapped in backticks ``
+      return;
+    }
+
+    alert("Email Successfully WhiteListed!");
+    whitelistEmail.value = "";
+  } catch (error) {
+    console.error("Error:", error);
+    alert("Failed to whitelist email.");
   }
 });

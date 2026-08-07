@@ -81,6 +81,10 @@ async function fetchAndRenderWalletPage() {
       "http://127.0.0.1:8000/api/render_wallet_page/" + walletId,
       {
         method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json",
+        },
       },
     );
     const responseData = await response.json();
@@ -890,12 +894,13 @@ openSettings.addEventListener("click", async (e) => {
       return;
     }
 
-    const response = await fetch(
-      "http://127.0.0.1:8000/api/render-settings/" + token,
-      {
-        method: "POST",
+    const response = await fetch("http://127.0.0.1:8000/api/render-settings", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
       },
-    );
+    });
 
     const data = await response.json();
 
@@ -907,7 +912,6 @@ openSettings.addEventListener("click", async (e) => {
     // Extract values from the backend response dictionary
     const email = data.email;
     const pfp = data.profile_picture;
-    const lockedWallets = data.locked_wallets;
 
     // Update settings UI elements
     document.getElementById("settings-email").textContent = email;

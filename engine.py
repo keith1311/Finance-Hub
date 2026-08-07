@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from database import SessionLocal
@@ -12,8 +12,17 @@ import os
 from dotenv import load_dotenv
 from passlib.context import CryptContext
 from typing import Optional
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
+
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI()
+
+# Register the error handler
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
@@ -135,14 +144,19 @@ def serialize_wallet(wallet: Wallet):
     }
 
 
-@app.post("/api/render_main_page/{token}")
-def render_main_page(token: str):
+@app.post("/api/render_main_page")
+def render_main_page(authorization: str = Header(None)):
+    # 1. Verify the token to get the user_id
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid request.")
+
+    token = authorization.split(" ")[1]
+
     db = SessionLocal()
     try:
         user_id = verify_access_token(token)
         if not user_id:
             raise HTTPException(status_code=401, detail="User not found.")
-
         # Fetch the top 6 wallets based on last_used timestamp
         top_six = (
             db.query(Wallet)
@@ -354,7 +368,16 @@ def render_main_page(token: str):
 
 
 @app.post("/api/render_wallet_page/{wallet_id}")
-def render_wallet_page(wallet_id: str):
+def render_wallet_page(wallet_id: str, authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid request.")
+
+    token = authorization.split(" ")[1]
+
+    user_id = verify_access_token(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not found.")
+
     db = SessionLocal()
     try:
         # Find Wallet
@@ -884,14 +907,21 @@ def render_wallet_page(wallet_id: str):
 class RenameWallet(BaseModel):
     walletId: str
     newName: str
-    token: str
 
 
 @app.post("/api/rename-wallet")
-def rename_wallet(data: RenameWallet):
+def rename_wallet(data: RenameWallet, authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid request.")
+
+    token = authorization.split(" ")[1]
+
+    user_id = verify_access_token(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not found.")
+
     db = SessionLocal()
     try:
-        user_id = verify_access_token(data.token)
         # 1. Fetch all existing wallet names
         all_wallets = (
             db.query(Wallet)
@@ -964,11 +994,18 @@ def rename_wallet(data: RenameWallet):
         db.close()
 
 
-@app.post("/api/delete-wallet/{wallet_id}/{token}")
-def delete_wallet(wallet_id: str, token: str):
+@app.post("/api/delete-wallet/{wallet_id}")
+def delete_wallet(wallet_id: str, authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid request.")
+
+    token = authorization.split(" ")[1]
+
+    user_id = verify_access_token(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not found.")
     db = SessionLocal()
     try:
-        user_id = verify_access_token(token)
         # 1. Find the wallet matching the wallet_id
         wallet = (
             db.query(Wallet)
@@ -1030,10 +1067,18 @@ class LockWallet(BaseModel):
 
 
 @app.post("/api/lock-wallet")
-def lock_wallet(data: LockWallet):
+def lock_wallet(data: LockWallet, authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid request.")
+
+    token = authorization.split(" ")[1]
+
+    user_id = verify_access_token(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not found.")
+
     db = SessionLocal()
     try:
-        user_id = verify_access_token(data.token)
         target_wallet = (
             db.query(Wallet)
             .filter(Wallet.id == data.walletId, Wallet.user_id == user_id)
@@ -1093,11 +1138,19 @@ def lock_wallet(data: LockWallet):
         db.close()
 
 
-@app.post("/api/create-wallet/{wallet_name}/{token}")
-def create_wallet(wallet_name: str, token: str):
+@app.post("/api/create-wallet/{wallet_name}")
+def create_wallet(wallet_name: str, authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid request.")
+
+    token = authorization.split(" ")[1]
+
+    user_id = verify_access_token(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not found.")
+
     db = SessionLocal()
     try:
-        user_id = verify_access_token(token)
         existing_wallet = (
             db.query(Wallet)
             .filter(Wallet.name == wallet_name, Wallet.user_id == user_id)
@@ -1168,14 +1221,26 @@ def create_wallet(wallet_name: str, token: str):
         db.close()
 
 
-@app.post("/api/{function}/{wallet_id}/{token}")
-def toggle(function: str, wallet_id: str, token: str):
+class toggle(BaseModel):
+    wallet_id: str
+
+
+@app.post("/api/toggle/{function}")
+def toggle_wallet(function: str, data: toggle, authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid request.")
+
+    token = authorization.split(" ")[1]
+
+    user_id = verify_access_token(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not found.")
+
     db = SessionLocal()
     try:
-        user_id = verify_access_token(token)
         target_wallet = (
             db.query(Wallet)
-            .filter(Wallet.id == wallet_id, Wallet.user_id == user_id)
+            .filter(Wallet.id == data.wallet_id, Wallet.user_id == user_id)
             .first()
         )
 
@@ -1242,7 +1307,8 @@ class RegisterLogin(BaseModel):
 
 
 @app.post("/api/register")
-def Register(data: RegisterLogin):
+@limiter.limit("5/minute")
+def Register(request: Request, data: RegisterLogin):
     db = SessionLocal()
     try:
         allowed_entry = db.query(Access).filter(Access.email == data.email).first()
@@ -1258,7 +1324,7 @@ def Register(data: RegisterLogin):
         new_user = Users(
             email=data.email,
             password=hashed_password,
-            profile_picture="/uploads/default_pfp.jpg",
+            profile_picture="default_pfp.jpg",
         )
 
         db.add(new_user)
@@ -1283,7 +1349,8 @@ def Register(data: RegisterLogin):
 
 
 @app.post("/api/login")
-def Login(data: RegisterLogin):
+@limiter.limit("5/minute")
+def Login(request: Request, data: RegisterLogin):
     db = SessionLocal()
     try:
         existing_user = db.query(Users).filter(Users.email == data.email).first()
@@ -1312,33 +1379,26 @@ def Login(data: RegisterLogin):
         db.close()
 
 
-@app.post("/api/render-settings/{token}")
-def render_settings(token: str):
+@app.post("/api/render-settings")
+def render_settings(authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid request.")
+
+    token = authorization.split(" ")[1]
+
+    user_id = verify_access_token(token)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not found.")
+
     db = SessionLocal()
     try:
-        # 1. Verify the access token to get the user_id
-        user_id = verify_access_token(token=token)
-
-        # 2. Search the user table for profile_picture and email
         user = db.query(Users).filter(Users.user_id == user_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-
-        # 3. Search all wallets that are locked and belong to the user
-        locked_wallets = (
-            db.query(Wallet)
-            .filter(Wallet.user_id == user_id, Wallet.password != "")
-            .all()
-        )
-
         # 4. Return the gathered data
         return {
             "email": user.email,
             "profile_picture": user.profile_picture,
-            "locked_wallets": [
-                {"name": wallet.name, "password": wallet.password}
-                for wallet in locked_wallets
-            ],
         }
 
     except HTTPException as he:
@@ -1372,7 +1432,11 @@ def add_income(data: AddIncome, authorization: str = Header(None)):
         if not user_id:
             raise HTTPException(status_code=401, detail="User not found.")
 
-        target_wallet = db.query(Wallet).filter(Wallet.id == data.wallet_id).first()
+        target_wallet = (
+            db.query(Wallet)
+            .filter(Wallet.id == data.wallet_id, Wallet.user_id == user_id)
+            .first()
+        )
         if not target_wallet:
             raise HTTPException(status_code=404, detail="Wallet not found.")
 
@@ -1446,7 +1510,11 @@ def create_transaction(data: CreateTransaction, authorization: str = Header(None
         if not user_id:
             raise HTTPException(status_code=401, detail="User not found.")
 
-        target_wallet = db.query(Wallet).filter(Wallet.id == data.wallet_id).first()
+        target_wallet = (
+            db.query(Wallet)
+            .filter(Wallet.id == data.wallet_id, Wallet.user_id == user_id)
+            .first()
+        )
         if not target_wallet:
             raise HTTPException(status_code=404, detail="Wallet not found.")
 
@@ -1559,7 +1627,9 @@ def render_passwords(authorization: str = Header(None)):
 
         # Optional: If wallets belong to a specific user, add user_id filter:
         # locked_wallet = db.query(Wallet).filter(Wallet.user_id == user_id, Wallet.password != "").all()
-        locked_wallet = db.query(Wallet).filter(Wallet.password != "").all()
+        locked_wallet = (
+            db.query(Wallet).filter(Wallet.password != "", Wallet.id == user_id).all()
+        )
 
         # 2. Build the list of dictionaries
         passwords_list = []
@@ -1629,56 +1699,6 @@ def load_wallets(authorization: str = Header(None)):
         raise he
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-    finally:
-        db.close()
-
-
-@app.post("/api/wallet-data/{token}")
-def load_wallet_data(token: str):
-    db = SessionLocal()
-    try:
-        user_id = verify_access_token(token)
-        if not user_id:
-            raise HTTPException(status_code=401, detail="User not found.")
-
-        # Fetch the wallets for the authenticated user
-        top_six = (
-            db.query(Wallet)
-            .filter(Wallet.hide == False, Wallet.user_id == user_id)
-            .order_by(Wallet.pin.desc(), Wallet.last_used.desc())
-            .limit(6)
-            .all()
-        )
-
-        rendered_wallets = []
-        for wallet in top_six:
-            if wallet.censor == True:
-                balance = "******"
-            elif wallet.censor == False:
-                balance = f"{wallet.balance:.2f}"
-            else:
-                balance = wallet.balance
-
-            rendered_wallets.append(
-                {
-                    "id": wallet.id,
-                    "name": wallet.name,
-                    "balance": balance,
-                    "password": wallet.password,
-                    "censor": wallet.censor,
-                    "pin": wallet.pin,
-                }
-            )
-
-        return {"wallets": rendered_wallets}
-
-    except HTTPException as he:
-        raise he  # Let FastAPI handle 400 properly
-
-    except Exception as e:
-        db.rollback()  # Undo changes if something unexpected fails
         raise HTTPException(status_code=500, detail=str(e))
 
     finally:
@@ -1892,5 +1912,53 @@ def filter_transactions(
                 )
         return transaction_data
 
+    finally:
+        db.close()
+
+
+class WhiteList(BaseModel):
+    email: str
+
+
+@app.post("/api/whitelist-email")
+def whitelist(data: WhiteList, authorization: str = Header(None)):
+    # Optional: Add your token verification here if needed
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Invalid request.")
+
+    token = authorization.split(" ")[1]
+    user_id = verify_access_token(token=token)
+
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not found.")
+
+    if user_id != "5d80038e-ce0b-4080-91e1-becfab7f5fbd":
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have the authority to whitelist another user.",
+        )
+
+    db = SessionLocal()
+    try:
+        # 1. Query for the specific email instead of loading all rows
+        existing_user = db.query(Access).filter(Access.email == data.email).first()
+
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already whitelisted.")
+
+        # 2. Instantiate the Access model object (not a raw dictionary)
+        new_entry = Access(email=data.email)
+
+        db.add(new_entry)
+        db.commit()
+        db.refresh(new_entry)
+
+        return {"message": "Email successfully whitelisted."}
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()

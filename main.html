@@ -373,6 +373,7 @@
         <div class="dialog-btn2">
           <button
             class="to-register"
+            style="font-size: 11px"
             type="button"
             onclick="
               document.getElementById('login-dialog').close();
@@ -425,6 +426,7 @@
         <div class="dialog-btn2">
           <button
             class="to-register"
+            style="font-size: 11px"
             type="button"
             onclick="
               document.getElementById('register-dialog').close();
@@ -521,6 +523,7 @@
             onclick="
               localStorage.removeItem('authToken');
               document.getElementById('login-dialog').showModal();
+              document.getElementById('settings-dialog').close();
             "
           >
             <i class="fa-solid fa-right-from-bracket"></i>&nbsp;Log Out
@@ -529,6 +532,17 @@
             <i class="fa-solid fa-floppy-disk"></i>&nbsp;Apply
           </button>
         </div>
+
+        <button
+          class="close"
+          id="close"
+          onclick="
+            document.getElementById('settings-dialog').close();
+            document.getElementById('whitelist-email').value = '';
+          "
+        >
+          <i class="fa-solid fa-circle-xmark" style="color: rgb(210, 5, 5)"></i>
+        </button>
 
         <!-- Whitelist Container at the very bottom -->
         <div class="input-group" id="whitelist-box">
@@ -544,14 +558,8 @@
               class="whitelist-item"
             />
             <div class="dialog-btn">
-              <button class="btn-save" id="whitelist-btn" type="button">
+              <button class="btn-save" id="whitelist-btn" type="submit">
                 <i class="fa-solid fa-plus"></i>&nbsp;Whitelist
-              </button>
-              <button class="close">
-                <i
-                  class="fa-solid fa-circle-xmark"
-                  style="color: rgb(210, 5, 5)"
-                ></i>
               </button>
             </div>
           </div>
