@@ -26,6 +26,11 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
+origins = [
+    "http://localhost:8000",
+    "https://finance-hub-kei-fb25.vercel.app",  # Your actual live Vercel domain
+]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
