@@ -1,7 +1,8 @@
 let currentIndex;
 let theme = "";
 let token = localStorage.getItem("authToken");
-const apiURL = import.meta.env.API_URL;
+const apiURL = "https://finance-hub-qakq.onrender.com";
+
 // 1. Get from localStorage and convert to a number
 currentIndex = parseInt(localStorage.getItem("currentIndex"));
 theme = localStorage.getItem("theme");
