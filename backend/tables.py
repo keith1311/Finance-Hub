@@ -73,7 +73,3 @@ class Access(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     email = Column(String, unique=True, index=True)
-
-
-# 1. This tells SQLAlchemy to actually create the "wallets" table in PostgreSQL if it doesn't exist yet
-Base.metadata.create_all(bind=engine)

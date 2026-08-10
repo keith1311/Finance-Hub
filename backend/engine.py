@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from .database import SessionLocal
+from .database import SessionLocal, Base, engine
 from .tables import Transactions, Wallet, Users, Access
 from datetime import datetime, date, timedelta
 from sqlalchemy import func, extract, or_
@@ -142,6 +142,12 @@ def serialize_wallet(wallet: Wallet):
         "pin": wallet.pin,
         "hide": wallet.hide,
     }
+
+
+@app.on_event("startup")
+def startup_event():
+    # This safely runs after the app starts up and network is ready
+    Base.metadata.create_all(bind=engine)
 
 
 @app.post("/api/render_main_page")
