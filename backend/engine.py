@@ -1962,3 +1962,8 @@ def whitelist(data: WhiteList, authorization: str = Header(None)):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}

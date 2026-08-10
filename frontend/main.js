@@ -36,7 +36,6 @@ fetchAndRenderMainPage();
 async function fetchAndRenderMainPage() {
   // Always read the latest auth token before the request is made.
   token = localStorage.getItem("authToken");
-  console.log(token);
   if (!token || token === "undefined") {
     document.getElementById("login-dialog").showModal();
     return;
@@ -1146,7 +1145,7 @@ openSettings.addEventListener("click", async (e) => {
 
       // Paste your exact expected token here
       const myToken =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjVkODAwMzhlLWNlMGItNDA4MC05MWUxLWJlY2ZhYjdmNWZiZCJ9.kSwY8MbHXdEY6OlnHVcbnrozS3q5XNTOlq3yu4CcbxM";
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZkYzY5MDVlLTE0ODUtNDEzMy1hOTc3LTg1ODMzZGVhMjcwZCJ9.DesGgnUptrCX4Q9VFs3Rg69JXxTh693Fc6ecOrz1MAk";
 
       if (!token || token.trim() !== myToken) {
         whiteList.classList.add("hidden"); // Hide it if it's not yours or missing
