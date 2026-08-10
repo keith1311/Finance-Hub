@@ -1,8 +1,8 @@
 from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from database import SessionLocal
-from tables import Transactions, Wallet, Users, Access
+from .database import SessionLocal
+from .tables import Transactions, Wallet, Users, Access
 from datetime import datetime, date, timedelta
 from sqlalchemy import func, extract, or_
 from pydantic import BaseModel

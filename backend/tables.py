@@ -10,7 +10,7 @@ from sqlalchemy import (
     Float,
 )
 from sqlalchemy.orm import relationship
-from database import Base, engine
+from .database import Base, engine
 import uuid
 
 
