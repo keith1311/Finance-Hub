@@ -1,6 +1,7 @@
 let currentIndex;
 let theme = "";
 let token = localStorage.getItem("authToken");
+const apiURL = import.meta.env.API_URL;
 
 // 1. Get from localStorage and convert to a number
 currentIndex = parseInt(localStorage.getItem("currentIndex"));
@@ -78,7 +79,7 @@ async function fetchAndRenderWalletPage() {
   try {
     // 2. Send the POST request to your FastAPI backend
     const response = await fetch(
-      "http://127.0.0.1:8000/api/render_wallet_page/" + walletId,
+      `${apiURL}/api/render_wallet_page/` + walletId,
       {
         method: "POST",
         headers: {
@@ -213,7 +214,7 @@ function deleteTransaction(transactionId) {
 async function deleteTransactionConfirmed() {
   const deleteDialog = document.getElementById("delete-record-dialog");
   const transactionId = deleteDialog.dataset.transactionId;
-  const response = await fetch("http://127.0.0.1:8000/api/delete-transaction", {
+  const response = await fetch(`${apiURL}/api/delete-transaction`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -753,7 +754,7 @@ incomeForm.addEventListener("submit", async (event) => {
       return;
     }
 
-    const response = await fetch("http://127.0.0.1:8000/api/add-income", {
+    const response = await fetch(`${apiURL}/api/add-income`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -843,23 +844,20 @@ transactionForm.addEventListener("submit", async (event) => {
       return;
     }
 
-    const response = await fetch(
-      "http://127.0.0.1:8000/api/create-transaction",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + token,
-        },
-        body: JSON.stringify({
-          date: date,
-          tag: tag,
-          category: category, // <--- Fixed: Changed semicolon to comma
-          amount: parseFloat(amount),
-          wallet_id: walletId,
-        }),
+    const response = await fetch(`${apiURL}/api/create-transaction`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
       },
-    );
+      body: JSON.stringify({
+        date: date,
+        tag: tag,
+        category: category, // <--- Fixed: Changed semicolon to comma
+        amount: parseFloat(amount),
+        wallet_id: walletId,
+      }),
+    });
 
     const data = await response.json();
 
@@ -894,7 +892,7 @@ openSettings.addEventListener("click", async (e) => {
       return;
     }
 
-    const response = await fetch("http://127.0.0.1:8000/api/render-settings", {
+    const response = await fetch(`${apiURL}/api/render-settings`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -918,7 +916,7 @@ openSettings.addEventListener("click", async (e) => {
 
     const pfpElement = document.getElementById("settings-pfp");
 
-    pfpElement.src = "http://127.0.0.1:8000/uploads/" + pfp;
+    pfpElement.src = `${apiURL}/uploads/` + pfp;
 
     // Set dropdown selections based on current active variables
     themesInput.value = theme; // "Light" or "Dark"
@@ -1033,7 +1031,7 @@ changeForm.addEventListener("submit", async (event) => {
       return;
     }
 
-    const response = await fetch("http://127.0.0.1:8000/api/change-password", {
+    const response = await fetch(`${apiURL}/api/change-password`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1083,7 +1081,7 @@ async function loadPasswords() {
       return;
     }
 
-    const response = await fetch("http://127.0.0.1:8000/api/render-passwords", {
+    const response = await fetch(`${apiURL}/api/render-passwords`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -1213,25 +1211,22 @@ filterForm.addEventListener("submit", async function (event) {
   const balanceAfter = inputBalanceFilter.value;
 
   try {
-    const response = await fetch(
-      "http://127.0.0.1:8000/api/get-filter/" + "wallet",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          date: date || null,
-          tag: tag || null,
-          category: category || null,
-          operator: operator || null,
-          amount: amount || null,
-          wallet_id: walletId || null,
-          balance_after: balanceAfter || null,
-        }),
+    const response = await fetch(`${apiURL}/api/get-filter/` + "wallet", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
-    );
+      body: JSON.stringify({
+        date: date || null,
+        tag: tag || null,
+        category: category || null,
+        operator: operator || null,
+        amount: amount || null,
+        wallet_id: walletId || null,
+        balance_after: balanceAfter || null,
+      }),
+    });
 
     if (!response.ok) {
       throw new Error("Failed to fetch filtered transactions");

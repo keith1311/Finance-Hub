@@ -1,7 +1,7 @@
 let currentIndex;
 let theme = "";
 let token = localStorage.getItem("authToken");
-
+const apiURL = import.meta.env.API_URL;
 // 1. Get from localStorage and convert to a number
 currentIndex = parseInt(localStorage.getItem("currentIndex"));
 theme = localStorage.getItem("theme");
@@ -42,7 +42,7 @@ async function fetchAndRenderMainPage() {
   }
   try {
     // 2. Fetch data from your Python API
-    const response = await fetch("http://127.0.0.1:8000/api/render_main_page", {
+    const response = await fetch(`${apiURL}/api/render_main_page`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -204,19 +204,16 @@ function renderWallets(walletData, walletGridId) {
       censorLink.addEventListener("click", async (e) => {
         e.preventDefault();
         try {
-          const response = await fetch(
-            `http://127.0.0.1:8000/api/toggle/censor`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: "Bearer " + token,
-              },
-              body: JSON.stringify({
-                wallet_id: wallet.id,
-              }),
+          const response = await fetch(`${apiURL}/api/toggle/censor`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + token,
             },
-          );
+            body: JSON.stringify({
+              wallet_id: wallet.id,
+            }),
+          });
           if (!response.ok) {
             const errorData = await response.json();
             alert(`Error: ${errorData.detail}`);
@@ -245,19 +242,16 @@ function renderWallets(walletData, walletGridId) {
       hideLink.addEventListener("click", async (e) => {
         e.preventDefault();
         try {
-          const response = await fetch(
-            `http://127.0.0.1:8000/api/toggle/hide`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: "Bearer " + token,
-              },
-              body: JSON.stringify({
-                wallet_id: wallet.id,
-              }),
+          const response = await fetch(`${apiURL}/api/toggle/hide`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + token,
             },
-          );
+            body: JSON.stringify({
+              wallet_id: wallet.id,
+            }),
+          });
           if (!response.ok) {
             const errorData = await response.json();
             alert(`Error: ${errorData.detail}`);
@@ -284,7 +278,7 @@ function renderWallets(walletData, walletGridId) {
       pinLink.addEventListener("click", async (e) => {
         e.preventDefault();
         try {
-          const response = await fetch(`http://127.0.0.1:8000/api/toggle/pin`, {
+          const response = await fetch(`${apiURL}/api/toggle/pin`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -509,7 +503,7 @@ renameForm.addEventListener("submit", async (event) => {
 
   // 3. POST TO BACKEND (via fetch)
   try {
-    const response = await fetch("http://127.0.0.1:8000/api/rename-wallet", {
+    const response = await fetch(`${apiURL}/api/rename-wallet`, {
       // Point to your actual rename endpoint
       method: "POST",
       headers: {
@@ -552,16 +546,13 @@ async function deleteWallet() {
   const walletId = deleteDialog.dataset.walletId;
   try {
     // 2. Send the POST request to your FastAPI backend
-    const response = await fetch(
-      "http://127.0.0.1:8000/api/delete-wallet/" + walletId,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + token,
-        },
+    const response = await fetch(`${apiURL}/api/delete-wallet/` + walletId, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
       },
-    );
+    });
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -712,7 +703,7 @@ passwordForm.addEventListener("submit", async (event) => {
 
   // 3. Send the request to the backend once all checks pass
   try {
-    const response = await fetch(`http://127.0.0.1:8000/api/lock-wallet`, {
+    const response = await fetch(`${apiURL}/api/lock-wallet`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -771,16 +762,13 @@ createForm.addEventListener("submit", async (event) => {
 
   // 3. POST TO BACKEND (via fetch)
   try {
-    const response = await fetch(
-      `http://127.0.0.1:8000/api/create-wallet/${walletName}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + token,
-        },
+    const response = await fetch(`${apiURL}/api/create-wallet/${walletName}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
       },
-    );
+    });
     // 1. Check if the response failed (e.g., status 400 or 404)
     if (!response.ok) {
       const errorData = await response.json(); // Parses {"detail": "..."}
@@ -935,7 +923,7 @@ registerForm.addEventListener("submit", async (event) => {
 
   // 3. Send registration request to backend
   try {
-    const response = await fetch("http://127.0.0.1:8000/api/register", {
+    const response = await fetch(`${apiURL}/api/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1044,7 +1032,7 @@ loginForm.addEventListener("submit", async (event) => {
 
   // 3. Send login request to backend
   try {
-    const response = await fetch("http://127.0.0.1:8000/api/login", {
+    const response = await fetch(`${apiURL}/api/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1113,7 +1101,7 @@ openSettings.addEventListener("click", async (e) => {
       return;
     }
 
-    const response = await fetch("http://127.0.0.1:8000/api/render-settings", {
+    const response = await fetch(`${apiURL}/api/render-settings`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1137,7 +1125,7 @@ openSettings.addEventListener("click", async (e) => {
 
     const pfpElement = document.getElementById("settings-pfp");
 
-    pfpElement.src = "http://127.0.0.1:8000/uploads/" + pfp;
+    pfpElement.src = `${apiURL}/uploads/` + pfp;
 
     if (token) {
       const whiteList = document.getElementById("whitelist-box");
@@ -1269,7 +1257,7 @@ changeForm.addEventListener("submit", async (event) => {
       return;
     }
 
-    const response = await fetch("http://127.0.0.1:8000/api/change-password", {
+    const response = await fetch(`${apiURL}/api/change-password`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1319,7 +1307,7 @@ async function loadPasswords() {
       return;
     }
 
-    const response = await fetch("http://127.0.0.1:8000/api/render-passwords", {
+    const response = await fetch(`${apiURL}/api/render-passwords`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -1425,7 +1413,7 @@ viewAllBtn.addEventListener("click", async function () {
       document.getElementById("login-dialog").showModal();
       return;
     }
-    const response = await fetch("http://127.0.0.1:8000/api/load-wallets", {
+    const response = await fetch(`${apiURL}/api/load-wallets`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1462,7 +1450,7 @@ async function refreshWalletDialog() {
       return;
     }
 
-    const response = await fetch("http://127.0.0.1:8000/api/load-wallets", {
+    const response = await fetch(`${apiURL}/api/load-wallets`, {
       method: "POST",
       headers: {
         Authorization: "Bearer " + token,
@@ -1521,24 +1509,21 @@ filterForm.addEventListener("submit", async function (event) {
     .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize the first letter of every word
 
   try {
-    const response = await fetch(
-      "http://127.0.0.1:8000/api/get-filter/" + "main",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          date: date || null,
-          tag: tag || null,
-          category: category || null,
-          operator: operator || null,
-          amount: amount || null,
-          wallet: wallet || null,
-        }),
+    const response = await fetch(`${apiURL}/api/get-filter/` + "main", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
-    );
+      body: JSON.stringify({
+        date: date || null,
+        tag: tag || null,
+        category: category || null,
+        operator: operator || null,
+        amount: amount || null,
+        wallet: wallet || null,
+      }),
+    });
 
     if (!response.ok) {
       throw new Error("Failed to fetch filtered transactions");
@@ -1573,7 +1558,7 @@ whitelistBtn.addEventListener("click", async function () {
   }
 
   try {
-    const response = await fetch("http://127.0.0.1:8000/api/whitelist-email/", {
+    const response = await fetch(`${apiURL}/api/whitelist-email/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
