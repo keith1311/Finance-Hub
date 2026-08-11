@@ -60,22 +60,33 @@ body {
   color: var(--text);
 }
 
+@media (max-width: 450px) {
+  html,
+  body {
+    overflow-x: auto;
+  }
+}
+
+/* 2. Desktop default: Full width, no horizontal scroll */
 .container {
   display: flex;
   flex-direction: column;
   width: 100%;
+  max-width: 100%;
   padding: 18px;
   gap: 12px;
   box-sizing: border-box;
   min-height: 100vh;
+  height: auto;
   overflow-y: auto;
+  overflow-x: hidden; /* Desktop stays locked, no side-to-side scrolling */
 }
 
-@media (min-height: 700px) {
+/* 3. Mobile override: Lock a minimum width and enable side-scrolling */
+@media (max-width: 450px) {
   .container {
-    height: 100vh;
-    max-height: 100vh;
-    overflow: hidden;
+    min-width: 500px; /* Forces your app layout to stay intact */
+    overflow-x: auto; /* Turns on horizontal scrolling ONLY on small screens */
   }
 }
 
