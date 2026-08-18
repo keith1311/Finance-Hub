@@ -1573,7 +1573,7 @@ whitelistBtn.addEventListener("click", async function () {
       return;
     }
 
-    alert("Email Successfully WhiteListed!");
+    alert("Email Successfully Whitelisted!");
     whitelistEmail.value = "";
   } catch (error) {
     console.error("Error:", error);

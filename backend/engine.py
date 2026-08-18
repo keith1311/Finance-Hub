@@ -1943,7 +1943,7 @@ def whitelist(data: WhiteList, authorization: str = Header(None)):
     if not user_id:
         raise HTTPException(status_code=401, detail="User not found.")
 
-    if user_id != "061e5936-e646-4a4c-881d-c6fc33f62da7":
+    if user_id != "6dc6905e-1485-4133-a977-85833dea270d":
         raise HTTPException(
             status_code=403,
             detail="You do not have the authority to whitelist another user.",

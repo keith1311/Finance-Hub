@@ -675,20 +675,39 @@ select.dropdown-cat option {
 
 #whitelist-box {
   display: flex;
-  flex-direction: column;
+  flex-direction: column; /* Keeps the "Grant Permission" title on top */
+  gap: 8px; /* Space between the label and the input row */
 }
 
-.whitelist-item {
+.whitelist-row {
   display: flex;
-  position: relative;
+  flex-direction: row; /* Puts input and button side-by-side */
+  width: 100%;
+}
+
+.whitelist-row input {
+  flex: 1; /* Makes the input take up the remaining space */
+  min-width: 0;
 }
 
 #whitelist-btn {
-  position: absolute;
-  right: 45px;
-  bottom: 52px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
 }
 
+@media (max-width: 410px) {
+  .whitelist-row {
+    flex-direction: column; /* Stack input and button vertically on small screens */
+  }
+
+  #whitelist-btn {
+    margin-top: 8px; /* Add some space between input and button */
+  }
+}
 .close {
   position: absolute;
   top: 0px;
