@@ -1,7 +1,8 @@
 let currentIndex;
 let theme = "";
 let token = localStorage.getItem("authToken");
-const apiURL = "https://finance-hub-qakq.onrender.com"; //"http://127.0.0.1:8000";
+const apiURL =
+  /*"https://finance-hub-qakq.onrender.com";*/ "http://127.0.0.1:8000";
 // 1. Get from localStorage and convert to a number
 currentIndex = parseInt(localStorage.getItem("currentIndex"));
 theme = localStorage.getItem("theme");
@@ -333,6 +334,43 @@ function renderTransactionTable(transactionData, tableContainer) {
       }
 
       rowDiv.innerHTML = `
+                <div>${tx.date}</div>
+                <div>${tx.tags || "-"}</div>
+                <div>${tx.category}</div>
+                <div>${amt}</div>
+                <div>${tx.wallet_name || tx.wallet_id}</div>
+            `;
+      tableDetailsContainer.appendChild(rowDiv);
+    });
+  }
+}
+function renderFilterTable(transactionData, tableContainer) {
+  // Render Transaction Table
+  const tableDetailsContainer = document.getElementById(tableContainer);
+
+  // Clear the placeholder text
+  tableDetailsContainer.innerHTML = "";
+
+  if (transactionData.length === 0) {
+    tableDetailsContainer.innerHTML =
+      '<div style="padding: 12px; text-align: center; color: #888;">No transactions found.</div>';
+  } else {
+    // Loop through backend data and create rows
+    transactionData.forEach((tx) => {
+      const rowDiv = document.createElement("div");
+      // Add a class name for your row styling (e.g., flex layout matching your headers)
+      rowDiv.className = "table-row-item";
+
+      let amt = "";
+
+      if (tx.category === "Income") {
+        amt = `+ RM ${tx.amount.toFixed(2)}`;
+      } else {
+        amt = `- RM ${tx.amount.toFixed(2)}`;
+      }
+
+      rowDiv.innerHTML = `
+                <div>${tx.index}</div>
                 <div>${tx.date}</div>
                 <div>${tx.tags || "-"}</div>
                 <div>${tx.category}</div>
@@ -1482,6 +1520,8 @@ openFilter.addEventListener("click", function () {
     '<div style="padding: 12px; text-align: center; color: #888;">No transactions found.</div>';
   filterDialog.showModal();
 });
+
+const inputRowFilter = document.getElementById("filter-row");
 const inputDateFilter = document.getElementById("filter-date");
 const inputTagFilter = document.getElementById("filter-tag");
 const inputCatFilter = document.getElementById("filter-cat");
@@ -1492,6 +1532,7 @@ const inputWalletFilter = document.getElementById("filter-wallet");
 filterForm.addEventListener("submit", async function (event) {
   event.preventDefault();
 
+  const row = inputRowFilter.value;
   const date = inputDateFilter.value;
   const tag = inputTagFilter.value
     .trim() // Remove spaces from the very beginning and end
@@ -1516,6 +1557,7 @@ filterForm.addEventListener("submit", async function (event) {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
+        row: row || null,
         date: date || null,
         tag: tag || null,
         category: category || null,
@@ -1529,9 +1571,12 @@ filterForm.addEventListener("submit", async function (event) {
       throw new Error("Failed to fetch filtered transactions");
     }
 
-    const data = await response.json();
+    const [data, rowCounter, total] = await response.json();
 
-    renderTransactionTable(data, "filter-details");
+    renderFilterTable(data, "filter-details");
+    document.getElementById("total-filter-amount").textContent =
+      `RM${total.toFixed(2)}`;
+    inputRowFilter.value = rowCounter; // Update the row input with the count of filtered rows
   } catch (error) {
     console.error("Error:", error);
   }

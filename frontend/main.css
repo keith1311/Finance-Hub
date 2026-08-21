@@ -136,8 +136,15 @@ body {
 }
 
 .left .section-title {
+  display: flex;
   font-weight: 700;
   margin: 0;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .wallet-grid {
@@ -145,6 +152,7 @@ body {
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   flex-shrink: 0;
+  min-height: 250px;
 }
 
 .wallet {
@@ -152,6 +160,7 @@ body {
   padding: 14px;
   border-radius: 12px;
   position: relative;
+  height: 50%;
   animation: slideInFromLeft 1s ease-out;
 }
 
@@ -320,7 +329,7 @@ body {
   min-height: 0;
   scrollbar-color: var(--scrollbar-thumb) var(--card);
   scrollbar-width: thin;
-  max-height: 500px;
+  max-height: 270px;
 }
 
 .table_details {
@@ -832,7 +841,7 @@ select.dropdown-cat option {
 }
 
 #filter-dialog {
-  width: 90vw;
+  width: 100vw;
   max-width: 1500px; /* This keeps it from getting too wide on desktop */
   max-height: 90vh;
   padding: 30px 24px;
@@ -842,6 +851,12 @@ select.dropdown-cat option {
   border-radius: 16px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
   overflow-y: hidden;
+}
+
+.filter-scroll {
+  scrollbar-color: var(--scrollbar-thumb) var(--dialog-bg);
+  scrollbar-width: thin;
+  padding-right: 12px;
 }
 
 /* Ensure the inner inputs stack vertically and fill the width */

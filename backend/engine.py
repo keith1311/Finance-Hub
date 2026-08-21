@@ -27,7 +27,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 origins = [
-    "http://localhost:8000",
+    "http://127.0.0.1:8000",
     "https://finance-hub-sepia-seven.vercel.app",  # Your actual live Vercel domain
 ]
 
@@ -1805,6 +1805,7 @@ def delete_transaction(data: DeleteTransaction, authorization: str = Header(None
 
 
 class FilterTransactions(BaseModel):
+    row: Optional[int] = None
     date: Optional[str] = None
     tag: Optional[str] = None
     category: Optional[str] = None
@@ -1861,8 +1862,11 @@ def filter_transactions(
                 tag_conditions = [Transactions.tags.ilike(f"%{t}%") for t in tag_list]
                 query = query.filter(or_(*tag_conditions))
 
-        if data.category is not None:
+        if data.category is not None and data.category != "Expense":
             query = query.filter(Transactions.category.ilike(f"%{data.category}%"))
+
+        if data.category is not None and data.category == "Expense":
+            query = query.filter(Transactions.category != "Income")
 
         if data.wallet is not None:
             query = query.filter(Wallet.name == data.wallet)
@@ -1894,15 +1898,27 @@ def filter_transactions(
         if data.balance_after is not None:
             query = query.filter(Transactions.balance_after == data.balance_after)
 
-        # 4. Fetch results
-        results = query.order_by(Transactions.date.desc(), Transactions.id.desc()).all()
+        query = query.order_by(Transactions.date.desc(), Transactions.id.desc())
+
+        if data.row is not None:
+            query = query.limit(data.row)
+
+        # 4. Fetch final results
+        results = query.all()
 
         transaction_data = []
-
+        row_counter = 0  # Initialize row counter
+        total = 0.0
         if origin == "main":
             for tx in results:
+                if tx.category == "Income":
+                    total += tx.amount
+                else:
+                    total -= tx.amount
+                row_counter += 1
                 transaction_data.append(
                     {
+                        "index": row_counter,
                         "date": tx.date.strftime("%Y-%m-%d"),
                         "tags": tx.tags,
                         "category": tx.category,
@@ -1912,8 +1928,14 @@ def filter_transactions(
                 )
         elif origin == "wallet":
             for tx in results:
+                if tx.category == "Income":
+                    total += tx.amount
+                else:
+                    total -= tx.amount
+                row_counter += 1
                 transaction_data.append(
                     {
+                        "index": row_counter,
                         "date": tx.date.strftime("%Y-%m-%d"),
                         "tags": tx.tags,
                         "category": tx.category,
@@ -1921,7 +1943,7 @@ def filter_transactions(
                         "balance": tx.balance_after,
                     }
                 )
-        return transaction_data
+        return (transaction_data, row_counter, total)
 
     finally:
         db.close()
@@ -1965,6 +1987,62 @@ def whitelist(data: WhiteList, authorization: str = Header(None)):
         db.refresh(new_entry)
 
         return {"message": "Email successfully whitelisted."}
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+class EditTransaction(BaseModel):
+    transactionId: str
+    date: date
+    tag: str
+    category: str
+    amount: float
+    walletId: str
+
+
+@app.post("/api/edit-transaction")
+def edit_transaction(data: EditTransaction, authorization: str = Header(None)):
+    db = SessionLocal()
+    try:
+        # 1. Verify the token to get the user_id
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid request.")
+        token = authorization.split(" ")[1]
+        user_id = verify_access_token(token=token)
+
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User not found.")
+
+        transaction = (
+            db.query(Transactions).filter(Transactions.id == data.transactionId).first()
+        )
+        if not transaction:
+            raise HTTPException(status_code=404, detail="Transaction not found.")
+
+        # 3. Update the transaction
+        transaction.date = data.date
+        transaction.tags = data.tag
+        transaction.category = data.category
+        transaction.amount = data.amount
+
+        target_wallet = (
+            db.query(Wallet)
+            .filter(Wallet.id == data.walletId, Wallet.user_id == user_id)
+            .first()
+        )
+
+        # Slow path: It's an older/backdated deletion, ripple the math forward
+        recalculate_balance_after(data.walletId, data.date, target_wallet, db)
+
+        db.commit()
+        db.refresh(transaction)
+        return {"message": "Transaction updated successfully."}
 
     except HTTPException as he:
         raise he

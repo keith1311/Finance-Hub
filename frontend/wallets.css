@@ -141,8 +141,15 @@ body {
 }
 
 .left .section-title {
+  display: flex;
   font-weight: 700;
   margin: 0;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .analysis-card {
@@ -251,7 +258,7 @@ body {
   min-height: 0;
   scrollbar-color: var(--scrollbar-thumb) var(--card);
   scrollbar-width: thin;
-  max-height: 500px;
+  max-height: 190px;
 }
 
 .table_details {
@@ -634,32 +641,6 @@ select.dropdown-cat option {
   padding: 10px;
 }
 
-.pfp {
-  width: 25%;
-  height: 20%;
-  border-radius: 9999px;
-}
-
-.email-container {
-  display: flex;
-  flex-direction: column;
-  gap: 2px; /* Controls the tight spacing between label and email */
-}
-
-.inner-email {
-  display: flex;
-  color: var(--muted);
-  font-size: 13px;
-  margin: 0; /* Removes the default browser margin from the h6 element */
-}
-
-/* Specifically style the h6 text color/weight if needed */
-#settings-email {
-  color: var(--text);
-  font-size: 0.95rem;
-  font-weight: 500;
-}
-
 .close {
   position: absolute;
   top: -9px;
@@ -670,18 +651,7 @@ select.dropdown-cat option {
   padding: 0;
 }
 
-.settings-close {
-  position: absolute;
-  top: 0px;
-  right: -2px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-}
-
-.close,
-.settings-close i {
+.close {
   font-size: 32px;
 }
 
@@ -766,7 +736,7 @@ select.dropdown-cat option {
 }
 
 #filter-dialog {
-  width: 90vw;
+  width: 100vw;
   max-width: 1500px; /* This keeps it from getting too wide on desktop */
   max-height: 90vh;
   padding: 30px 24px;
@@ -776,6 +746,12 @@ select.dropdown-cat option {
   border-radius: 16px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
   overflow-y: hidden;
+}
+
+.filter-scroll {
+  scrollbar-color: var(--scrollbar-thumb) var(--dialog-bg);
+  scrollbar-width: thin;
+  padding-right: 12px;
 }
 
 /* Ensure the inner inputs stack vertically and fill the width */
