@@ -164,6 +164,10 @@ body {
   animation: slideInFromLeft 1s ease-out;
 }
 
+dialog .wallet {
+  height: auto;
+}
+
 @keyframes slideInFromLeft {
   from {
     transform: translateX(-100%);

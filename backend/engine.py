@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from .database import SessionLocal, Base, engine
 from .tables import Transactions, Wallet, Users, Access
 from datetime import datetime, date, timedelta
-from sqlalchemy import func, extract, or_
+from sqlalchemy import and_, func, extract, or_
 from pydantic import BaseModel
 import calendar
 import jwt
@@ -15,7 +15,7 @@ from typing import Optional
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-
+import uuid
 
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI()
@@ -60,6 +60,7 @@ def recalculate_balance_after(
         .order_by(Transactions.date.desc(), Transactions.id.desc())
         .first()
     )
+    print(f"Previous transaction before {target_date}: {previous_tx.tags}")
 
     # Set starting balance baseline
     running_balance = float(previous_tx.balance_after) if previous_tx else 0.0
@@ -74,27 +75,36 @@ def recalculate_balance_after(
         .order_by(Transactions.date.asc(), Transactions.id.asc())
         .all()
     )
-
     # 3. Loop through and recalculate each row sequentially
     last_tx = None
-    for tx in update_transactions:
-        amount = float(tx.amount) if tx.amount else 0.0
 
-        # Correctly check the loop item 'tx', not the class model 'Transactions'
-        if tx.category == "Income":
-            running_balance += amount
-        else:
-            running_balance -= amount
+    if not update_transactions:
+        # If no transactions are left on/after target_date,
+        # the wallet balance should revert to the previous transaction's balance (or 0.0)
+        if target_wallet:
+            target_wallet.balance = running_balance
+            print(
+                f"No future transactions left for wallet {target_wallet.id}. Reset balance to: {running_balance}"
+            )
+    else:
+        # Loop through and recalculate each row sequentially
+        for tx in update_transactions:
+            amount = float(tx.amount) if tx.amount else 0.0
 
-        tx.balance_after = running_balance
-        last_tx = tx
+            if tx.category == "Income" or tx.category == "Transfer In":
+                running_balance += amount
+            else:
+                running_balance -= amount
 
-    # 4. Update the main wallet's total balance to match the absolute latest balance_after
-    if target_wallet and last_tx:
-        target_wallet.balance = last_tx.balance_after
+            tx.balance_after = running_balance
+            last_tx = tx
 
-    # 5. Commit all changes to the database in one batch
-    db.commit()
+        # 4. Update the main wallet's total balance using the absolute latest transaction
+        if target_wallet and last_tx:
+            print(
+                f"Final balance for wallet {target_wallet.id}: {last_tx.balance_after}, {last_tx.tags}"
+            )
+            target_wallet.balance = last_tx.balance_after
 
 
 def create_access_token(data: dict):
@@ -238,6 +248,7 @@ def render_main_page(authorization: str = Header(None)):
             .filter(
                 Wallet.user_id == user_id,
                 Transactions.category != "Income",
+                Transactions.category != "Transfer In",
                 Transactions.date >= start_of_day,
                 Transactions.date < end_of_day,
             )
@@ -249,6 +260,7 @@ def render_main_page(authorization: str = Header(None)):
             .join(Wallet, Transactions.wallet_id == Wallet.id)
             .filter(
                 Transactions.category != "Income",
+                Transactions.category != "Transfer In",
                 Transactions.date >= start_of_day,
                 Transactions.date < end_of_day,
                 Wallet.user_id == user_id,
@@ -270,6 +282,7 @@ def render_main_page(authorization: str = Header(None)):
             .filter(
                 Wallet.user_id == user_id,
                 Transactions.category != "Income",
+                Transactions.category != "Transfer In",
                 Transactions.date.between(start_of_week, end_of_week),
             )
             .group_by(Transactions.category)
@@ -280,6 +293,7 @@ def render_main_page(authorization: str = Header(None)):
             .join(Wallet, Transactions.wallet_id == Wallet.id)
             .filter(
                 Transactions.category != "Income",
+                Transactions.category != "Transfer In",
                 Transactions.date.between(start_of_week, end_of_week),
                 Wallet.user_id == user_id,
             )
@@ -300,6 +314,7 @@ def render_main_page(authorization: str = Header(None)):
             .filter(
                 Wallet.user_id == user_id,
                 Transactions.category != "Income",
+                Transactions.category != "Transfer In",
                 extract("year", Transactions.date) == current_year,
                 extract("month", Transactions.date) == current_month,
             )
@@ -312,6 +327,7 @@ def render_main_page(authorization: str = Header(None)):
             .filter(
                 Wallet.user_id == user_id,
                 Transactions.category != "Income",
+                Transactions.category != "Transfer In",
                 extract("year", Transactions.date) == current_year,
                 extract("month", Transactions.date) == current_month,
             )
@@ -332,6 +348,7 @@ def render_main_page(authorization: str = Header(None)):
             .filter(
                 Wallet.user_id == user_id,
                 Transactions.category != "Income",
+                Transactions.category != "Transfer In",
                 extract("year", Transactions.date) == current_year,
             )
             .group_by(Transactions.category)
@@ -343,6 +360,7 @@ def render_main_page(authorization: str = Header(None)):
             .filter(
                 Wallet.user_id == user_id,
                 Transactions.category != "Income",
+                Transactions.category != "Transfer In",
                 extract("year", Transactions.date) == current_year,
             )
             .scalar()
@@ -458,6 +476,7 @@ def render_wallet_page(wallet_id: str, authorization: str = Header(None)):
             )
             .filter(
                 Transactions.category != "Income",
+                Transactions.category != "Transfer In",
                 Transactions.date >= start_of_day,
                 Transactions.date < end_of_day,
                 Transactions.wallet_id == wallet_id,
@@ -469,6 +488,7 @@ def render_wallet_page(wallet_id: str, authorization: str = Header(None)):
             db.query(func.sum(Transactions.amount))
             .filter(
                 Transactions.category != "Income",
+                Transactions.category != "Transfer In",
                 Transactions.date >= start_of_day,
                 Transactions.date < end_of_day,
                 Transactions.wallet_id == wallet_id,
@@ -489,6 +509,7 @@ def render_wallet_page(wallet_id: str, authorization: str = Header(None)):
             )
             .filter(
                 Transactions.category != "Income",
+                Transactions.category != "Transfer In",
                 Transactions.date.between(start_of_week, end_of_week),
                 Transactions.wallet_id == wallet_id,
             )
@@ -499,6 +520,7 @@ def render_wallet_page(wallet_id: str, authorization: str = Header(None)):
             db.query(func.sum(Transactions.amount))
             .filter(
                 Transactions.category != "Income",
+                Transactions.category != "Transfer In",
                 Transactions.wallet_id == wallet_id,
                 Transactions.date.between(start_of_week, end_of_week),
             )
@@ -518,6 +540,7 @@ def render_wallet_page(wallet_id: str, authorization: str = Header(None)):
             )
             .filter(
                 Transactions.category != "Income",
+                Transactions.category != "Transfer In",
                 Transactions.wallet_id == wallet_id,
                 extract("year", Transactions.date) == current_year,
                 extract("month", Transactions.date) == current_month,
@@ -529,6 +552,7 @@ def render_wallet_page(wallet_id: str, authorization: str = Header(None)):
             db.query(func.sum(Transactions.amount))
             .filter(
                 Transactions.category != "Income",
+                Transactions.category != "Transfer In",
                 Transactions.wallet_id == wallet_id,
                 extract("year", Transactions.date) == current_year,
                 extract("month", Transactions.date) == current_month,
@@ -549,6 +573,7 @@ def render_wallet_page(wallet_id: str, authorization: str = Header(None)):
             )
             .filter(
                 Transactions.category != "Income",
+                Transactions.category != "Transfer In",
                 extract("year", Transactions.date) == current_year,
                 Transactions.wallet_id == wallet_id,
             )
@@ -559,6 +584,7 @@ def render_wallet_page(wallet_id: str, authorization: str = Header(None)):
             db.query(func.sum(Transactions.amount))
             .filter(
                 Transactions.category != "Income",
+                Transactions.category != "Transfer In",
                 extract("year", Transactions.date) == current_year,
                 Transactions.wallet_id == wallet_id,
             )
@@ -622,8 +648,18 @@ def render_wallet_page(wallet_id: str, authorization: str = Header(None)):
             data_dict = {int(row.day): float(row.total) for row in raw_data}
             return [data_dict.get(d, 0.0) for d in days_in_month]
 
-        daily_expense = fetch_daily_line_data(Transactions.category != "Income")
-        daily_income = fetch_daily_line_data(Transactions.category == "Income")
+        daily_expense = fetch_daily_line_data(
+            and_(
+                Transactions.category != "Income",
+                Transactions.category != "Transfer In",
+            )
+        )
+        daily_income = fetch_daily_line_data(
+            or_(
+                Transactions.category == "Income",
+                Transactions.category == "Transfer In",
+            )
+        )
         daily_savings = [
             round(inc - exp, 2) for inc, exp in zip(daily_income, daily_expense)
         ]
@@ -682,8 +718,18 @@ def render_wallet_page(wallet_id: str, authorization: str = Header(None)):
                         data_dict[week_num] += float(row.amount)
             return [data_dict[w] for w in weeks_in_year]
 
-        weekly_expense = fetch_weekly_line_data(Transactions.category != "Income")
-        weekly_income = fetch_weekly_line_data(Transactions.category == "Income")
+        weekly_expense = fetch_weekly_line_data(
+            and_(
+                Transactions.category != "Income",
+                Transactions.category != "Transfer In",
+            )
+        )
+        weekly_income = fetch_weekly_line_data(
+            or_(
+                Transactions.category == "Income",
+                Transactions.category == "Transfer In",
+            )
+        )
         weekly_savings = [
             round(inc - exp, 2) for inc, exp in zip(weekly_income, weekly_expense)
         ]
@@ -751,8 +797,18 @@ def render_wallet_page(wallet_id: str, authorization: str = Header(None)):
             data_dict = {int(row.month): float(row.total) for row in raw_data}
             return [data_dict.get(m, 0.0) for m in all_months]
 
-        monthly_expense = fetch_monthly_line_data(Transactions.category != "Income")
-        monthly_income = fetch_monthly_line_data(Transactions.category == "Income")
+        monthly_expense = fetch_monthly_line_data(
+            and_(
+                Transactions.category != "Income",
+                Transactions.category != "Transfer In",
+            )
+        )
+        monthly_income = fetch_monthly_line_data(
+            or_(
+                Transactions.category == "Income",
+                Transactions.category == "Transfer In",
+            )
+        )
         monthly_savings = [
             round(inc - exp, 2) for inc, exp in zip(monthly_income, monthly_expense)
         ]
@@ -824,8 +880,18 @@ def render_wallet_page(wallet_id: str, authorization: str = Header(None)):
             data_dict = {int(row.year): float(row.total) for row in raw_data}
             return [data_dict.get(y, 0.0) for y in decade_years]
 
-        yearly_expense = fetch_yearly_line_data(Transactions.category != "Income")
-        yearly_income = fetch_yearly_line_data(Transactions.category == "Income")
+        yearly_expense = fetch_yearly_line_data(
+            and_(
+                Transactions.category != "Income",
+                Transactions.category != "Transfer In",
+            )
+        )
+        yearly_income = fetch_yearly_line_data(
+            or_(
+                Transactions.category == "Income",
+                Transactions.category == "Transfer In",
+            )
+        )
         yearly_savings = [
             round(inc - exp, 2) for inc, exp in zip(yearly_income, yearly_expense)
         ]
@@ -1477,6 +1543,7 @@ def add_income(data: AddIncome, authorization: str = Header(None)):
         if latest_transaction and latest_transaction.date > data.date:
             # It's backdated! Let the recalculator handle the whole chain safely
             recalculate_balance_after(data.wallet_id, data.date, target_wallet, db)
+            db.commit()  # Commit after recalculation
         else:
             # Fast path: It's today or the newest entry
             previous_balance = (
@@ -1555,6 +1622,7 @@ def create_transaction(data: CreateTransaction, authorization: str = Header(None
         if latest_transaction and latest_transaction.date > data.date:
             # It's backdated! Let the recalculator handle the whole chain safely
             recalculate_balance_after(data.wallet_id, data.date, target_wallet, db)
+            db.commit()  # Commit after recalculation
         else:
             # Fast path: It's today or the newest entry (Always an expense/withdrawal here)
             previous_balance = (
@@ -1733,14 +1801,6 @@ def delete_transaction(data: DeleteTransaction, authorization: str = Header(None
         if not user_id:
             raise HTTPException(status_code=401, detail="User not found.")
 
-        target_wallet = (
-            db.query(Wallet)
-            .filter(Wallet.id == data.walletId, Wallet.user_id == user_id)
-            .first()
-        )
-        if not target_wallet:
-            raise HTTPException(status_code=404, detail="Wallet not found.")
-
         # Fetch the transaction for the authenticated user
         transaction = (
             db.query(Transactions)
@@ -1752,44 +1812,48 @@ def delete_transaction(data: DeleteTransaction, authorization: str = Header(None
         if not transaction:
             raise HTTPException(status_code=404, detail="Transaction not found.")
 
-        # 1. Check if the transaction being deleted is the absolute latest one
-        latest_transaction = (
-            db.query(Transactions)
-            .filter(Transactions.wallet_id == data.walletId)
-            .order_by(Transactions.date.desc(), Transactions.id.desc())
-            .first()
-        )
+        # Track all wallets and dates that need balance recalculation
+        wallets_to_recalculate = set()  # Stores tuples of (wallet_id, date)
 
-        is_latest = latest_transaction and latest_transaction.id == transaction.id
-
-        # 2. Save info needed before deleting
-        target_date = transaction.date
-        wallet_id = transaction.wallet_id
-
-        # Delete the target transaction
-        db.delete(transaction)
-        db.flush()  # Flush so the deletion is staged in memory
-
-        # 3. Branch: Fast path if deleting the latest, otherwise full recalculation
-        if is_latest:
-            # Fast path: Just grab the new latest transaction (if any left) and adjust the wallet
-            new_latest = (
+        # Check if it's a paired transfer transaction
+        if transaction.transfer_group_id is not None and transaction.category in [
+            "Transfer Out",
+            "Transfer In",
+        ]:
+            transfer_transactions = (
                 db.query(Transactions)
-                .filter(Transactions.wallet_id == wallet_id)
-                .order_by(Transactions.date.desc(), Transactions.id.desc())
-                .first()
+                .join(Wallet, Transactions.wallet_id == Wallet.id)
+                .filter(
+                    Transactions.transfer_group_id == transaction.transfer_group_id,
+                    Wallet.user_id == user_id,
+                )
+                .limit(2)
+                .all()
             )
 
-            if new_latest:
-                target_wallet.balance = new_latest.balance_after
-            else:
-                target_wallet.balance = 0.0
+            for transfer_tx in transfer_transactions:
+                # Save wallet and date before deleting
 
-            db.commit()
+                wallets_to_recalculate.add((transfer_tx.wallet_id, transfer_tx.date))
+                db.delete(transfer_tx)
         else:
-            # Slow path: It's an older/backdated deletion, ripple the math forward
-            recalculate_balance_after(wallet_id, target_date, target_wallet, db)
+            # Single normal transaction
+            wallets_to_recalculate.add((transaction.wallet_id, transaction.date))
+            db.delete(transaction)
 
+        db.flush()  # Flush so all deletions are staged
+
+        # Recalculate balances for all affected wallets
+        for w_id, t_date in wallets_to_recalculate:
+            # Fetch the specific wallet object from db to ensure it's valid
+            affected_wallet = db.query(Wallet).filter(Wallet.id == w_id).first()
+            if affected_wallet:
+                recalculate_balance_after(w_id, t_date, affected_wallet, db)
+                print(
+                    f"Recalculated balances for wallet {affected_wallet.name} after deleting transaction(s) on {t_date}"
+                )
+
+        db.commit()
         return {"message": "Transaction deleted successfully"}
 
     except HTTPException as he:
@@ -1866,7 +1930,10 @@ def filter_transactions(
             query = query.filter(Transactions.category.ilike(f"%{data.category}%"))
 
         if data.category is not None and data.category == "Expense":
-            query = query.filter(Transactions.category != "Income")
+            query = query.filter(
+                Transactions.category != "Income",
+                Transactions.category != "Transfer In",
+            )
 
         if data.wallet is not None:
             query = query.filter(Wallet.name == data.wallet)
@@ -1911,7 +1978,7 @@ def filter_transactions(
         total = 0.0
         if origin == "main":
             for tx in results:
-                if tx.category == "Income":
+                if tx.category == "Income" or tx.category == "Transfer In":
                     total += tx.amount
                 else:
                     total -= tx.amount
@@ -1928,7 +1995,7 @@ def filter_transactions(
                 )
         elif origin == "wallet":
             for tx in results:
-                if tx.category == "Income":
+                if tx.category == "Income" or tx.category == "Transfer In":
                     total += tx.amount
                 else:
                     total -= tx.amount
@@ -2031,6 +2098,15 @@ def edit_transaction(data: EditTransaction, authorization: str = Header(None)):
         transaction.category = data.category
         transaction.amount = data.amount
 
+        if transaction.transfer_group_id is not None and transaction.category in [
+            "Transfer In",
+            "Transfer Out",
+        ]:
+            raise HTTPException(
+                status_code=400,
+                detail="Editing transfer transactions is not allowed.",
+            )
+
         target_wallet = (
             db.query(Wallet)
             .filter(Wallet.id == data.walletId, Wallet.user_id == user_id)
@@ -2043,6 +2119,86 @@ def edit_transaction(data: EditTransaction, authorization: str = Header(None)):
         db.commit()
         db.refresh(transaction)
         return {"message": "Transaction updated successfully."}
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+class TransferMoney(BaseModel):
+    date: date
+    amount: float
+    from_wallet_id: str
+    to_wallet: str
+
+
+@app.post("/api/transfer-money")
+def transfer_money(data: TransferMoney, authorization: str = Header(None)):
+    db = SessionLocal()
+    try:
+        # 1. Verify the token to get the user_id
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid request.")
+        token = authorization.split(" ")[1]
+        user_id = verify_access_token(token=token)
+
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User not found.")
+
+        from_wallet = (
+            db.query(Wallet)
+            .filter(Wallet.id == data.from_wallet_id, Wallet.user_id == user_id)
+            .first()
+        )
+        to_wallet = (
+            db.query(Wallet)
+            .filter(Wallet.name == data.to_wallet, Wallet.user_id == user_id)
+            .first()
+        )
+
+        if not from_wallet or not to_wallet:
+            raise HTTPException(status_code=404, detail="Wallet not found.")
+
+        if from_wallet.id == to_wallet.id:
+            raise HTTPException(
+                status_code=400, detail="Cannot transfer money to the same wallet."
+            )
+
+        # Create two transactions: one for the source wallet and one for the destination wallet
+
+        group_id = uuid.uuid4()
+
+        transfer_out = Transactions(
+            date=data.date,
+            tags=f"Transfer to {to_wallet.name}",
+            category="Transfer Out",
+            amount=data.amount,
+            wallet_id=data.from_wallet_id,
+            transfer_group_id=group_id,
+        )
+        transfer_in = Transactions(
+            date=data.date,
+            tags=f"Transfer from {from_wallet.name}",
+            category="Transfer In",
+            amount=data.amount,
+            wallet_id=to_wallet.id,
+            transfer_group_id=group_id,
+        )
+
+        db.add(transfer_out)
+        db.add(transfer_in)
+        db.flush()  # Flush to get IDs without committing yet
+
+        # Recalculate balances for both wallets
+        recalculate_balance_after(data.from_wallet_id, data.date, from_wallet, db)
+        recalculate_balance_after(to_wallet.id, data.date, to_wallet, db)
+
+        db.commit()
+        return {"message": "Transfer completed successfully."}
 
     except HTTPException as he:
         raise he

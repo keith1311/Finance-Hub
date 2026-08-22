@@ -327,7 +327,7 @@ function renderTransactionTable(transactionData, tableContainer) {
 
       let amt = "";
 
-      if (tx.category === "Income") {
+      if (tx.category === "Income" || tx.category === "Transfer In") {
         amt = `+ RM ${tx.amount.toFixed(2)}`;
       } else {
         amt = `- RM ${tx.amount.toFixed(2)}`;
@@ -363,7 +363,7 @@ function renderFilterTable(transactionData, tableContainer) {
 
       let amt = "";
 
-      if (tx.category === "Income") {
+      if (tx.category === "Income" || tx.category === "Transfer In") {
         amt = `+ RM ${tx.amount.toFixed(2)}`;
       } else {
         amt = `- RM ${tx.amount.toFixed(2)}`;
@@ -467,6 +467,30 @@ function renderRightPanel(canvasData, metricsTotal) {
           labels: {
             color: theme === "light" ? "#1e293b" : "#ffffff",
             boxWidth: 12,
+          },
+          onClick: (e, legendItem, legend) => {
+            const index = legendItem.index;
+            const chart = legend.chart;
+
+            // 1. Toggle the native visibility (keeps built-in hiding behavior)
+            chart.toggleDataVisibility(index);
+            chart.update();
+
+            // 2. Extract visible labels and sum their values
+            let newTotal = 0;
+            const visibleLabels = [];
+
+            chart.data.labels.forEach((label, i) => {
+              // Check if this data index is currently visible
+              if (chart.getDataVisibility(i)) {
+                visibleLabels.push(label);
+                newTotal += chart.data.datasets[0].data[i];
+              }
+            });
+
+            // 3. Update your metrics amount on the screen instantly
+            document.getElementById("metrics-amt").textContent =
+              `RM${newTotal.toFixed(2)}`;
           },
         },
       },

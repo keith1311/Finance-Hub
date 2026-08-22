@@ -64,7 +64,7 @@ class Transactions(Base):
     amount = Column(Float)
     wallet_id = Column(UUID(as_uuid=True), ForeignKey("wallets.id"))
     balance_after = Column(Float)
-
+    transfer_group_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     wallet = relationship("Wallet", back_populates="transactions")
 
 

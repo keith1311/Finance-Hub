@@ -138,6 +138,7 @@ async function fetchAndRenderWalletPage() {
     metricsData.yearly.nature = responseData[29];
 
     walletName = header.name;
+    document.title = walletName;
     document.getElementById("title").textContent = walletName;
     document.getElementById("total-balance").textContent =
       `RM${header.balance.toFixed(2)}`;
@@ -168,7 +169,7 @@ function renderTransactionTable(transactionData, tableContainer) {
 
       let amt = "";
 
-      if (tx.category === "Income") {
+      if (tx.category === "Income" || tx.category === "Transfer In") {
         amt = `+ RM ${tx.amount.toFixed(2)}`;
       } else {
         amt = `- RM ${tx.amount.toFixed(2)}`;
@@ -297,7 +298,17 @@ async function updateTransaction() {
 
     if (!response.ok) {
       console.error("Failed to edit transaction:", data.detail);
-      return;
+
+      if (
+        data.detail.includes("Editing transfer transactions is not allowed")
+      ) {
+        alert("Editing transfer transactions is not allowed.");
+        document.getElementById("edit-amt-warning-text").innerHTML = "";
+        document.getElementById("edit-tag-warning-text").innerHTML = "";
+        document.getElementById("edit-date-warning-text").innerHTML = "";
+        document.getElementById("edit-dialog").close();
+        return;
+      }
     }
 
     // Success: Reset form and close dialog
@@ -451,6 +462,30 @@ function renderRightPanel(canvasData, metricsTotal) {
           labels: {
             color: theme === "light" ? "#1e293b" : "#ffffff",
             boxWidth: 12,
+          },
+          onClick: (e, legendItem, legend) => {
+            const index = legendItem.index;
+            const chart = legend.chart;
+
+            // 1. Toggle the native visibility (keeps built-in hiding behavior)
+            chart.toggleDataVisibility(index);
+            chart.update();
+
+            // 2. Extract visible labels and sum their values
+            let newTotal = 0;
+            const visibleLabels = [];
+
+            chart.data.labels.forEach((label, i) => {
+              // Check if this data index is currently visible
+              if (chart.getDataVisibility(i)) {
+                visibleLabels.push(label);
+                newTotal += chart.data.datasets[0].data[i];
+              }
+            });
+
+            // 3. Update your metrics amount on the screen instantly
+            document.getElementById("metrics-amt").textContent =
+              `RM${newTotal.toFixed(2)}`;
           },
         },
       },
@@ -882,6 +917,15 @@ incomeForm.addEventListener("submit", async (event) => {
     return;
   }
 
+  if (parseFloat(amount) <= 0) {
+    incAmtWarning.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Amount must be greater than zero.';
+    incTagWarning.innerHTML = "";
+    incDateWarning.innerHTML = "";
+    incAmtInput.value = "";
+    return;
+  }
+
   try {
     const token = localStorage.getItem("authToken");
     if (!token) {
@@ -972,6 +1016,15 @@ transactionForm.addEventListener("submit", async (event) => {
     return;
   }
 
+  if (parseFloat(amount) <= 0) {
+    tranAmtWarning.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Amount must be greater than zero.';
+    tranTagWarning.innerHTML = "";
+    tranDateWarning.innerHTML = "";
+    tranAmtInput.value = "";
+    return;
+  }
+
   try {
     const token = localStorage.getItem("authToken");
     if (!token) {
@@ -1002,6 +1055,7 @@ transactionForm.addEventListener("submit", async (event) => {
     }
 
     // Success: Reset form and close dialog
+    tranDateWarning.innerHTML = "";
     tranAmtWarning.innerHTML = "";
     tranTagWarning.innerHTML = "";
     transactionForm.reset();
@@ -1101,7 +1155,7 @@ function renderFilterTable(transactionData, tableContainer) {
 
       let amt = "";
 
-      if (tx.category === "Income") {
+      if (tx.category === "Income" || tx.category === "Transfer In") {
         amt = `+ RM ${tx.amount.toFixed(2)}`;
       } else {
         amt = `- RM ${tx.amount.toFixed(2)}`;
@@ -1121,3 +1175,121 @@ function renderFilterTable(transactionData, tableContainer) {
     });
   }
 }
+
+// =================== Transfer Function  =================== //
+const transferBtn = document.getElementById("transfer-money");
+const transferForm = document.getElementById("transfer-form");
+const transferDialog = document.getElementById("transfer-dialog");
+
+transferBtn.addEventListener("click", () => {
+  const transferDialog = document.getElementById("transfer-dialog");
+  const dateInput = document.getElementById("transfer-date");
+  const today = new Date().toLocaleDateString("en-CA");
+  dateInput.value = today;
+  transferDialog.showModal();
+});
+
+transferForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const today = new Date().toLocaleDateString("en-CA");
+  const date = document.getElementById("transfer-date").value;
+  const fromWalletId = walletId;
+  const toWallet = document
+    .getElementById("transfer-wallet")
+    .value.trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+  const amount = document.getElementById("transfer-amt").value;
+  const dateWarning = document.getElementById("transfer-date-warning-text");
+  const walletWarning = document.getElementById("transfer-wallet-warning-text");
+  const amtWarning = document.getElementById("transfer-amt-warning-text");
+
+  if (date > today) {
+    document.getElementById("transfer-date").value = today;
+    dateWarning.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Date cannot be in the future.';
+    walletWarning.innerHTML = "";
+    amtWarning.innerHTML = "";
+    return;
+  }
+
+  if (toWallet === "") {
+    walletWarning.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
+    amtWarning.innerHTML = "";
+    dateWarning.innerHTML = "";
+    return;
+  }
+
+  if (amount === "") {
+    amtWarning.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
+    walletWarning.innerHTML = "";
+    dateWarning.innerHTML = "";
+    return;
+  }
+
+  if (parseFloat(amount) <= 0) {
+    amtWarning.innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Amount must be greater than zero.';
+    walletWarning.innerHTML = "";
+    dateWarning.innerHTML = "";
+    document.getElementById("transfer-amt").value = "";
+    return;
+  }
+
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      document.getElementById("login-dialog").showModal();
+      return;
+    }
+
+    const response = await fetch(`${apiURL}/api/transfer-money`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+      body: JSON.stringify({
+        date: date,
+        amount: parseFloat(amount),
+        from_wallet_id: fromWalletId,
+        to_wallet: toWallet,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      // Check the error status properly
+      const statusCode = response.status || data.status;
+
+      if (statusCode === 404 || statusCode === 400) {
+        walletWarning.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${data.detail}`;
+        dateWarning.value = "";
+        amtWarning.innerHTML = "";
+        document.getElementById("transfer-wallet").value = "";
+        return;
+      }
+
+      if (statusCode === 401) {
+        alert("Unauthorized: Please log in again.");
+        localStorage.removeItem("authToken");
+        document.getElementById("login-dialog").showModal();
+        return;
+      }
+    }
+
+    // Success: Reset form and close dialog
+    dateWarning.innerHTML = "";
+    amtWarning.innerHTML = "";
+    walletWarning.innerHTML = "";
+    transferForm.reset();
+    transferDialog.close();
+    fetchAndRenderWalletPage();
+  } catch (error) {
+    console.error("Error submitting transaction:", error);
+  }
+});
