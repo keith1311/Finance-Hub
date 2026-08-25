@@ -164,6 +164,10 @@ body {
   animation: slideInFromLeft 1s ease-out;
 }
 
+.wallet-fix {
+  height: 100% !important;
+}
+
 dialog .wallet {
   height: auto;
 }

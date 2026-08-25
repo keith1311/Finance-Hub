@@ -10,7 +10,7 @@ from sqlalchemy import (
     Float,
 )
 from sqlalchemy.orm import relationship
-from .database import Base, engine
+from backend.database import Base
 import uuid
 
 
@@ -28,6 +28,9 @@ class Users(Base):
     # Fixed: Match relationship target name and back_populates string
     wallets = relationship(
         "Wallet", back_populates="user", cascade="all, delete-orphan"
+    )
+    automations = relationship(
+        "Automation", back_populates="user", cascade="all, delete-orphan"
     )
 
 
@@ -73,3 +76,19 @@ class Access(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     email = Column(String, unique=True, index=True)
+
+
+class Automation(Base):
+    __tablename__ = "automation"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    wallet_to = Column(String)
+    wallet_from = Column(String)
+    interval = Column(String)
+    value = Column(Integer)
+    scheduled_date = Column(Date)
+    tags = Column(String)
+    category = Column(String)
+    amount = Column(Float)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"))
+    user = relationship("Users", back_populates="automations")

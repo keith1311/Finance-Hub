@@ -306,8 +306,19 @@ function renderWallets(walletData, walletGridId) {
 
       grid.appendChild(clone);
     });
+    // Target all rendered wallet cards inside the grid
+    const allWallets = grid.querySelectorAll(".wallet");
+
+    allWallets.forEach((wallet) => {
+      if (walletData.length > 3) {
+        wallet.classList.add("wallet-fix");
+      } else {
+        wallet.classList.remove("wallet-fix");
+      }
+    });
   }
 }
+
 function renderTransactionTable(transactionData, tableContainer) {
   // Render Transaction Table
   const tableDetailsContainer = document.getElementById(tableContainer);

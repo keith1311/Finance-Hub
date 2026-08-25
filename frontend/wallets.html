@@ -110,9 +110,7 @@
               <button
                 class="btn"
                 id="open-settings"
-                onclick="
-                  document.getElementById('manage-auto-dialog').showModal()
-                "
+                onclick="fetchAndRenderAutomation()"
               >
                 <i class="fa-solid fa-robot"></i>&nbsp;Automation
               </button>
@@ -555,8 +553,6 @@
             <option value="Investments">Investments</option>
             <option value="Healthcare">Healthcare</option>
             <option value="Groceries">Groceries</option>
-            <option value="Transfer In">Transfer In</option>
-            <option value="Transfer Out">Transfer Out</option>
             <option value="Others">Others</option>
           </select>
         </div>
@@ -940,6 +936,153 @@
           </button>
         </div>
       </form>
+    </dialog>
+
+    <!-- ====================== Edit Automation Dialog ====================== -->
+    <dialog class="dialog-box" id="edit-auto-dialog">
+      <form id="edit-auto-form" method="dialog">
+        <h3>Edit Automation</h3>
+
+        <div class="input-group">
+          <label for="edit-auto-tag">Enter Tags</label>
+          <input
+            type="text"
+            id="edit-auto-tag"
+            name="edit-auto-tag"
+            autofocus
+          />
+          <p class="warning-text" id="edit-auto-tag-warning-text"></p>
+        </div>
+
+        <div class="input-group">
+          <label for="edit-auto-cat">Select Category</label>
+          <select id="edit-auto-cat" class="dropdown-cat">
+            <option value="Income">Income</option>
+            <option value="Food">Food</option>
+            <option value="Transportation">Transportation</option>
+            <option value="Shopping">Shopping</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Bills">Bills</option>
+            <option value="Investments">Investments</option>
+            <option value="Healthcare">Healthcare</option>
+            <option value="Groceries">Groceries</option>
+            <option value="Others">Others</option>
+          </select>
+        </div>
+
+        <div class="input-group">
+          <label for="edit-auto-amt">Enter Amount</label>
+          <input
+            type="number"
+            step="0.01"
+            id="edit-auto-amt"
+            name="edit-auto-amt"
+          />
+          <p class="warning-text" id="edit-auto-amt-warning-text"></p>
+        </div>
+
+        <div class="input-group">
+          <label for="edit-auto-interval">Interval</label>
+          <div style="display: flex; gap: 0px; align-items: center">
+            <!-- ✅ Fixed: Unique ID instead of duplicate 'interval' -->
+            <select
+              id="edit-auto-interval"
+              class="dropdown-cat"
+              style="width: 30%"
+            >
+              <option value="Daily">Daily</option>
+              <option value="Monthly">Monthly</option>
+              <option value="Yearly">Yearly</option>
+            </select>
+            <input
+              type="number"
+              step="0.01"
+              id="edit-auto-value"
+              name="edit-auto-value"
+              placeholder="Enter Value Here..."
+              style="flex: 1"
+            />
+          </div>
+          <p class="warning-text" id="edit-auto-value-warning-text"></p>
+        </div>
+
+        <div class="dialog-btn">
+          <button
+            class="btn-dlt"
+            style="margin-right: 120px"
+            type="button"
+            id="delete-automation-btn"
+          >
+            <i class="fa-solid fa-trash-can"></i>&nbsp;Delete
+          </button>
+          <button
+            onclick="
+              document.getElementById('edit-auto-tag-warning-text').innerHTML =
+                '';
+              document.getElementById('edit-auto-amt-warning-text').innerHTML =
+                '';
+              document.getElementById(
+                'edit-auto-value-warning-text',
+              ).innerHTML = '';
+              document.getElementById('edit-auto-tag').value = '';
+              document.getElementById('edit-auto-cat').value = '';
+              document.getElementById('edit-auto-amt').value = '';
+              document.getElementById('edit-auto-interval').value = '';
+              document.getElementById('edit-auto-value').value = '';
+              document.getElementById('edit-auto-dialog').close();
+            "
+            class="btn-cancel"
+            type="button"
+          >
+            <i class="fa-solid fa-xmark"></i> Cancel
+          </button>
+          <button class="btn-save" type="submit" onclick="updateAutomation()">
+            <i class="fa-solid fa-floppy-disk"></i>&nbsp;Save
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <!-- ================= Delete Automation Dialog ====================== -->
+    <dialog class="dialog-box" id="delete-auto-dialog">
+      <h3>Delete this automation?</h3>
+      <div class="record-details">
+        <p id="automation-wallet">Wallet:</p>
+        <p id="automation-tag">Tag:</p>
+        <p id="automation-category">Category:</p>
+        <p id="automation-amount">Amount:</p>
+        <p id="automation-interval">Interval:</p>
+        <p id="automation-scheduled-date">Scheduled Date:</p>
+      </div>
+      <div class="dialog-btn">
+        <button
+          onclick="
+            document.getElementById('automation-wallet').textContent =
+              'Wallet:';
+            document.getElementById('automation-tag').textContent = 'Tag:';
+            document.getElementById('automation-category').textContent =
+              'Category:';
+            document.getElementById('automation-amount').textContent =
+              'Amount:';
+            document.getElementById('automation-interval').textContent =
+              'Interval:';
+            document.getElementById('automation-scheduled-date').textContent =
+              'Scheduled Date:';
+            document.getElementById('delete-auto-dialog').close();
+          "
+          class="btn-cancel"
+          type="button"
+        >
+          <i class="fa-solid fa-xmark"></i> No
+        </button>
+        <!-- Changed to type="button" since there's no form here -->
+        <button
+          class="btn-dlt"
+          type="button"
+          onclick="deleteAutomationConfirmed()"
+        >
+          <i class="fa-solid fa-trash-can"></i> Yes
+        </button>
+      </div>
     </dialog>
   </body>
 </html>

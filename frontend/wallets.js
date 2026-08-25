@@ -175,14 +175,25 @@ function renderTransactionTable(transactionData, tableContainer) {
         amt = `- RM ${tx.amount.toFixed(2)}`;
       }
 
-      rowDiv.innerHTML = `
+      if (tx.category === "Transfer Out" || tx.category === "Transfer In") {
+        rowDiv.innerHTML = `
                 <div>${tx.date}</div>
                 <div>${tx.tags || "-"}</div>
                 <div>${tx.category}</div>
                 <div>${amt}</div>
                 <div>RM ${tx.balance.toFixed(2)}</div>
-                <button class="btn-save" style="width: 40px; text-align: center; border-radius: 5px; border-width: 0; margin-right: 10px;" onclick="editTransaction(${tx.id})"><i class="fa-solid fa-pen-to-square"></i></button>
+                <button class="btn-dlt" style="width: 40px; text-align: center; border-radius: 5px; border-width: 0; margin-right: 10px;" onclick="deleteTransaction('${tx.id}')"><i class="fa-solid fa-trash-can"></i></button>
             `;
+      } else {
+        rowDiv.innerHTML = `
+                <div>${tx.date}</div>
+                <div>${tx.tags || "-"}</div>
+                <div>${tx.category}</div>
+                <div>${amt}</div>
+                <div>RM ${tx.balance.toFixed(2)}</div>
+                <button class="btn-save" style="width: 40px; text-align: center; border-radius: 5px; border-width: 0; margin-right: 10px;" onclick="editTransaction('${tx.id}')"><i class="fa-solid fa-pen-to-square"></i></button>
+            `;
+      }
       rowDiv.dataset.transactionId = tx.id; // Store the transaction ID in a data attribute for easy access
 
       tableDetailsContainer.appendChild(rowDiv);
@@ -268,7 +279,11 @@ async function updateTransaction() {
     amount ===
       recordValue[3].replace("RM ", "").replace("+ ", "").replace("- ", "")
   ) {
+    document.getElementById("edit-amt-warning-text").innerHTML = "";
+    document.getElementById("edit-tag-warning-text").innerHTML = "";
+    document.getElementById("edit-date-warning-text").innerHTML = "";
     document.getElementById("edit-dialog").close();
+    return;
   }
 
   try {
@@ -1289,6 +1304,558 @@ transferForm.addEventListener("submit", async (event) => {
     transferForm.reset();
     transferDialog.close();
     fetchAndRenderWalletPage();
+  } catch (error) {
+    console.error("Error submitting transaction:", error);
+  }
+});
+
+// =================== Automation Function  =================== //
+function renderAutomationTable(transactionData, tableContainer) {
+  // Render Transaction Table
+  const tableDetailsContainer = document.getElementById(tableContainer);
+
+  // Clear the placeholder text
+  tableDetailsContainer.innerHTML = "";
+
+  if (transactionData.length === 0) {
+    tableDetailsContainer.innerHTML =
+      '<div style="padding: 12px; text-align: center; color: #888;">No automations found.</div>';
+  } else {
+    transactionData.forEach((tx) => {
+      const rowDiv = document.createElement("div");
+      // Add a class name for your row styling (e.g., flex layout matching your headers)
+      rowDiv.className = "table-row-item";
+
+      let amt = "";
+
+      if (tx.category === "Income") {
+        amt = `+ RM ${tx.amount.toFixed(2)}`;
+      } else {
+        amt = `- RM ${tx.amount.toFixed(2)}`;
+      }
+
+      if (tx.category === "Transfer") {
+        rowDiv.innerHTML = `
+                <div>${tx.wallet_to}</div>
+                <div>${tx.tags}</div>
+                <div>${tx.category}</div>
+                <div>${amt}</div>
+                <div>${tx.interval}</div>
+                <div>${tx.scheduled_date}</div>
+                <button class="btn-dlt" style="width: 40px; text-align: center; border-radius: 5px; border-width: 0; margin-right: 10px;" onclick="deleteAutomation('${tx.id}')"><i class="fa-solid fa-trash-can"></i></button>
+            `;
+      } else {
+        rowDiv.innerHTML = `
+               <div>${tx.wallet_to}</div>
+                <div>${tx.tags}</div>
+                <div>${tx.category}</div>
+                <div>${amt}</div>
+                <div>${tx.interval}</div>
+                <div>${tx.scheduled_date}</div>
+                <button class="btn-save" style="width: 40px; text-align: center; border-radius: 5px; border-width: 0; margin-right: 10px;" onclick="editAutomation('${tx.id}')"><i class="fa-solid fa-pen-to-square"></i></button>
+            `;
+      }
+      rowDiv.dataset.automationId = tx.id; // Store the automation ID in a data attribute for easy access
+
+      tableDetailsContainer.appendChild(rowDiv);
+    });
+  }
+}
+
+// =================== Edit Automation Function  =================== //
+function editAutomation(automationId) {
+  const editAutomationDialog = document.getElementById("edit-auto-dialog");
+  editAutomationDialog.dataset.automationId = automationId;
+  const automationRow = document.querySelector(
+    `[data-automation-id="${automationId}"]`,
+  );
+  const recordValue = Array.from(
+    automationRow.querySelectorAll("div, button"),
+  ).map((el) => el.textContent.trim());
+
+  const autoValue = recordValue[4].split(" ")[0];
+  const rawInterval = recordValue[4].split(" ")[1];
+  let interval = "";
+
+  if (rawInterval === "Day" || rawInterval === "Days") {
+    interval = "Daily";
+  } else if (rawInterval === "Month" || rawInterval === "Months") {
+    interval = "Monthly";
+  } else if (rawInterval === "Year" || rawInterval === "Years") {
+    interval = "Yearly";
+  }
+
+  document.getElementById("edit-auto-tag").value = recordValue[1];
+  document.getElementById("edit-auto-cat").value = recordValue[2];
+  document.getElementById("edit-auto-amt").value = recordValue[3]
+    .replace("RM ", "")
+    .replace("+ ", "")
+    .replace("- ", "");
+  document.getElementById("edit-auto-interval").value = interval;
+  document.getElementById("edit-auto-value").value = autoValue;
+  editAutomationDialog.showModal();
+}
+
+async function updateAutomation() {
+  const tag = document
+    .getElementById("edit-auto-tag")
+    .value.trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+  const category = document.getElementById("edit-auto-cat").value;
+  const amount = document.getElementById("edit-auto-amt").value;
+  const interval = document.getElementById("edit-auto-interval").value;
+  const value = document.getElementById("edit-auto-value").value;
+  const editDialog = document.getElementById("edit-auto-dialog");
+  const automationId = editDialog.dataset.automationId;
+  const automationRow = document.querySelector(
+    `[data-automation-id="${automationId}"]`,
+  );
+  const recordValue = Array.from(
+    automationRow.querySelectorAll("div, button"),
+  ).map((el) => el.textContent.trim());
+
+  if (tag === "") {
+    document.getElementById("edit-auto-tag-warning-text").innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
+    document.getElementById("edit-auto-amt-warning-text").innerHTML = "";
+    document.getElementById("edit-auto-value-warning-text").innerHTML = "";
+    return;
+  }
+
+  if (amount === "") {
+    document.getElementById("edit-auto-amt-warning-text").innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
+    document.getElementById("edit-auto-tag-warning-text").innerHTML = "";
+    document.getElementById("edit-auto-value-warning-text").innerHTML = "";
+    return;
+  }
+
+  if (parseFloat(amount) <= 0) {
+    document.getElementById("edit-auto-amt-warning-text").innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Amount must be greater than zero.';
+    document.getElementById("edit-auto-tag-warning-text").innerHTML = "";
+    document.getElementById("edit-auto-value-warning-text").innerHTML = "";
+    document.getElementById("edit-auto-amt").value = "";
+    return;
+  }
+
+  if (value === "") {
+    document.getElementById("edit-auto-value-warning-text").innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
+    document.getElementById("edit-auto-tag-warning-text").innerHTML = "";
+    document.getElementById("edit-auto-amt-warning-text").innerHTML = "";
+    HTML = "";
+    return;
+  }
+
+  if (parseFloat(value) <= 0) {
+    document.getElementById("edit-auto-value-warning-text").innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Value must be greater than zero.';
+    document.getElementById("edit-auto-tag-warning-text").innerHTML = "";
+    document.getElementById("edit-auto-amt-warning-text").innerHTML = "";
+    document.getElementById("edit-auto-value").value = "";
+    return;
+  }
+
+  const autoValue = recordValue[4].split(" ")[0];
+  const rawInterval = recordValue[4].split(" ")[1];
+  let actualInterval = "";
+
+  if (rawInterval === "Day" || rawInterval === "Days") {
+    actualInterval = "Daily";
+  } else if (rawInterval === "Month" || rawInterval === "Months") {
+    actualInterval = "Monthly";
+  } else if (rawInterval === "Year" || rawInterval === "Years") {
+    actualInterval = "Yearly";
+  }
+
+  if (
+    tag === recordValue[1] &&
+    category === recordValue[2] &&
+    amount ===
+      recordValue[3].replace("RM ", "").replace("+ ", "").replace("- ", "") &&
+    value === autoValue &&
+    interval === actualInterval
+  ) {
+    // No changes to be made
+    document.getElementById("edit-auto-tag-warning-text").innerHTML = "";
+    document.getElementById("edit-auto-amt-warning-text").innerHTML = "";
+    document.getElementById("edit-auto-value-warning-text").innerHTML = "";
+    editDialog.close();
+    return;
+  }
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      document.getElementById("login-dialog").showModal();
+      return;
+    }
+
+    const response = await fetch(`${apiURL}/api/update-automation`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+      body: JSON.stringify({
+        automation_id: automationId,
+        tags: tag,
+        category: category,
+        amount: parseFloat(amount),
+        interval: interval,
+        value: parseFloat(value),
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      // Check the error status properly
+      const statusCode = response.status || data.status;
+
+      if (statusCode === 401) {
+        alert("Unauthorized: Please log in again.");
+        localStorage.removeItem("authToken");
+        document.getElementById("login-dialog").showModal();
+        return;
+      }
+    }
+
+    // Success: Reset form and close dialog
+    document.getElementById("edit-auto-tag-warning-text").innerHTML = "";
+    document.getElementById("edit-auto-amt-warning-text").inner;
+    HTML = "";
+    document.getElementById("edit-auto-value-warning-text").innerHTML = "";
+    editDialog.close();
+    fetchAndRenderAutomation();
+  } catch (error) {
+    console.error("Error updating automation:", error);
+  }
+}
+
+// =================== Delete Automation Function  =================== //
+const deleteAutomationBtn = document.getElementById("delete-automation-btn");
+deleteAutomationBtn.addEventListener("click", () => {
+  const automationId =
+    document.getElementById("edit-auto-dialog").dataset.automationId;
+  document.getElementById("edit-auto-tag-warning-text").innerHTML = "";
+  document.getElementById("edit-auto-amt-warning-text").innerHTML = "";
+  document.getElementById("edit-auto-value-warning-text").innerHTML = "";
+  deleteAutomation(automationId);
+  document.getElementById("edit-auto-dialog").close();
+});
+
+function deleteAutomation(automationId) {
+  const deleteAutomationDialog = document.getElementById("delete-auto-dialog");
+  deleteAutomationDialog.dataset.automationId = automationId;
+  const automationRow = document.querySelector(
+    `[data-automation-id="${automationId}"]`,
+  );
+  const recordValue = Array.from(
+    automationRow.querySelectorAll("div, button"),
+  ).map((el) => el.textContent.trim());
+
+  document.getElementById("automation-wallet").innerHTML =
+    "Wallet: " + `&nbsp;<div class="record-value">${recordValue[0]}</div>`;
+  document.getElementById("automation-tag").innerHTML =
+    "Tags: " + `&nbsp;<div class="record-value">${recordValue[1]}</div>`;
+  document.getElementById("automation-category").innerHTML =
+    "Category: " + `&nbsp;<div class="record-value">${recordValue[2]}</div>`;
+  document.getElementById("automation-amount").innerHTML =
+    "Amount: " + `&nbsp;<div class="record-value">${recordValue[3]}</div>`;
+  document.getElementById("automation-interval").innerHTML =
+    "Interval: " + `&nbsp;<div class="record-value">${recordValue[4]}</div>`;
+  document.getElementById("automation-scheduled-date").innerHTML =
+    "Scheduled Date: " +
+    `&nbsp;<div class="record-value">${recordValue[5]}</div>`;
+  deleteAutomationDialog.showModal();
+}
+async function deleteAutomationConfirmed() {
+  const automationId =
+    document.getElementById("delete-auto-dialog").dataset.automationId;
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      document.getElementById("login-dialog").showModal();
+      return;
+    }
+
+    const response = await fetch(`${apiURL}/api/delete-automation`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+      body: JSON.stringify({
+        automation_id: parseInt(automationId),
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Failed to delete automation:", errorData.detail);
+      return;
+    }
+    document.getElementById("delete-auto-dialog").close();
+    fetchAndRenderAutomation();
+  } catch (error) {
+    console.error("Error deleting automation:", error);
+  }
+}
+
+async function fetchAndRenderAutomation() {
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      document.getElementById("login-dialog").showModal();
+      return;
+    }
+
+    const response = await fetch(`${apiURL}/api/render-automation`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+      body: JSON.stringify({
+        wallet_id: walletId,
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      console.error("Failed to fetch automation data:", data.detail);
+      return;
+    }
+
+    const automationTable = document.getElementById("automation-details");
+    renderAutomationTable(data, "automation-details");
+    document.getElementById("manage-auto-dialog").showModal();
+  } catch (error) {
+    console.error("Error fetching automation data:", error);
+  }
+}
+
+const transactionAutomationForm = document.getElementById("tran-auto-form");
+const transactionAutomationDialog = document.getElementById("tran-auto-dialog");
+
+transactionAutomationForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const tags = document
+    .getElementById("tran-auto-tag")
+    .value.trim() // Remove spaces from the very beginning and end
+    .replace(/\s+/g, " ") // Replace multiple consecutive spaces in between words with a single space
+    .toLowerCase() // Convert everything to lowercase first
+    .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize the first letter of every word
+  const category = document.getElementById("tran-auto-cat").value;
+  const amount = document.getElementById("tran-auto-amt").value;
+  const interval = document.getElementById("tran-interval").value;
+  const value = document.getElementById("tran-auto-value").value;
+
+  if (tags === "") {
+    document.getElementById("tran-auto-tag-warning-text").innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
+    document.getElementById("tran-auto-amt-warning-text").innerHTML = "";
+    document.getElementById("tran-auto-value-warning-text").innerHTML = "";
+    return;
+  }
+
+  if (amount === "") {
+    document.getElementById("tran-auto-amt-warning-text").innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
+    document.getElementById("tran-auto-tag-warning-text").innerHTML = "";
+    document.getElementById("tran-auto-value-warning-text").innerHTML = "";
+    return;
+  }
+
+  if (parseFloat(amount) <= 0) {
+    document.getElementById("tran-auto-amt-warning-text").innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Amount must be greater than zero.';
+    document.getElementById("tran-auto-tag-warning-text").innerHTML = "";
+    document.getElementById("tran-auto-value-warning-text").innerHTML = "";
+    document.getElementById("tran-auto-amt").value = "";
+    return;
+  }
+
+  if (value === "") {
+    document.getElementById("tran-auto-value-warning-text").innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
+    document.getElementById("tran-auto-tag-warning-text").innerHTML = "";
+    document.getElementById("tran-auto-amt-warning-text").innerHTML = "";
+    return;
+  }
+
+  if (parseFloat(value) <= 0) {
+    document.getElementById("tran-auto-value-warning-text").innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Value must be greater than zero.';
+    document.getElementById("tran-auto-tag-warning-text").innerHTML = "";
+    document.getElementById("tran-auto-amt-warning-text").innerHTML = "";
+    document.getElementById("tran-auto-value").value = "";
+    return;
+  }
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      document.getElementById("login-dialog").showModal();
+      return;
+    }
+
+    const response = await fetch(`${apiURL}/api/add-automation/transaction`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+      body: JSON.stringify({
+        tags: tags,
+        category: category,
+        amount: parseFloat(amount),
+        interval: interval,
+        value: parseFloat(value),
+        wallet_to: walletId,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      // Check the error status properly
+      const statusCode = response.status || data.status;
+
+      if (statusCode === 401) {
+        alert("Unauthorized: Please log in again.");
+        localStorage.removeItem("authToken");
+        document.getElementById("login-dialog").showModal();
+        return;
+      }
+    }
+
+    // Success: Reset form and close dialog
+    document.getElementById("tran-auto-amt-warning-text").innerHTML = "";
+    document.getElementById("tran-auto-tag-warning-text").innerHTML = "";
+    document.getElementById("tran-auto-value-warning-text").innerHTML = "";
+    transactionAutomationForm.reset();
+    transactionAutomationDialog.close();
+    fetchAndRenderAutomation();
+  } catch (error) {
+    console.error("Error submitting transaction:", error);
+  }
+});
+
+const transferAutomationForm = document.getElementById("transfer-auto-form");
+const transferAutomationDialog = document.getElementById(
+  "transfer-auto-dialog",
+);
+
+transferAutomationForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const walletTo = document
+    .getElementById("transfer-auto-wallet")
+    .value.trim() // Remove spaces from the very beginning and end
+    .replace(/\s+/g, " ") // Replace multiple consecutive spaces in between words with a single space
+    .toLowerCase() // Convert everything to lowercase first
+    .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize the first letter of every word
+  const amount = document.getElementById("transfer-auto-amt").value;
+  const interval = document.getElementById("transfer-interval").value;
+  const value = document.getElementById("transfer-auto-value").value;
+
+  if (walletTo === "") {
+    document.getElementById("transfer-auto-wallet-warning-text").innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
+    document.getElementById("transfer-auto-amt-warning-text").innerHTML = "";
+    document.getElementById("transfer-auto-value-warning-text").innerHTML = "";
+    return;
+  }
+
+  if (amount === "") {
+    document.getElementById("transfer-auto-amt-warning-text").innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
+    document.getElementById("transfer-auto-wallet-warning-text").innerHTML = "";
+    document.getElementById("transfer-auto-value-warning-text").innerHTML = "";
+    return;
+  }
+
+  if (parseFloat(amount) <= 0) {
+    document.getElementById("transfer-auto-amt-warning-text").innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Amount must be greater than zero.';
+    document.getElementById("transfer-auto-wallet-warning-text").innerHTML = "";
+    document.getElementById("transfer-auto-value-warning-text").innerHTML = "";
+    document.getElementById("transfer-auto-amt").value = "";
+    return;
+  }
+
+  if (value === "") {
+    document.getElementById("transfer-auto-value-warning-text").innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
+    document.getElementById("transfer-auto-wallet-warning-text").innerHTML = "";
+    document.getElementById("transfer-auto-amt-warning-text").innerHTML = "";
+    return;
+  }
+
+  if (parseFloat(value) <= 0) {
+    document.getElementById("transfer-auto-value-warning-text").innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Value must be greater than zero.';
+    document.getElementById("transfer-auto-wallet-warning-text").innerHTML = "";
+    document.getElementById("transfer-auto-amt-warning-text").innerHTML = "";
+    document.getElementById("transfer-auto-value").value = "";
+    return;
+  }
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      document.getElementById("login-dialog").showModal();
+      return;
+    }
+
+    const response = await fetch(`${apiURL}/api/add-automation/transfer`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+      body: JSON.stringify({
+        wallet_to: walletTo,
+        amount: parseFloat(amount),
+        interval: interval,
+        value: parseFloat(value),
+        wallet_from: walletId,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      // Check the error status properly
+      const statusCode = response.status || data.status;
+
+      if (statusCode === 404) {
+        document.getElementById("transfer-auto-wallet-warning-text").innerHTML =
+          '<i class="fa-solid fa-triangle-exclamation"></i> ' + data.detail;
+        document.getElementById("transfer-auto-wallet").value = "";
+        document.getElementById("transfer-auto-amt-warning-text").innerHTML =
+          "";
+        document.getElementById("transfer-auto-value-warning-text").innerHTML =
+          "";
+        return;
+      }
+
+      if (statusCode === 401) {
+        alert("Unauthorized: Please log in again.");
+        localStorage.removeItem("authToken");
+        document.getElementById("login-dialog").showModal();
+        return;
+      }
+    }
+
+    // Success: Reset form and close dialog
+    document.getElementById("transfer-auto-amt-warning-text").innerHTML = "";
+    document.getElementById("transfer-auto-wallet-warning-text").innerHTML = "";
+    document.getElementById("transfer-auto-value-warning-text").innerHTML = "";
+    transferAutomationForm.reset();
+    transferAutomationDialog.close();
+    fetchAndRenderAutomation();
   } catch (error) {
     console.error("Error submitting transaction:", error);
   }

@@ -2,8 +2,9 @@ from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from .database import SessionLocal, Base, engine
-from .tables import Transactions, Wallet, Users, Access
+from .tables import Automation, Transactions, Wallet, Users, Access
 from datetime import datetime, date, timedelta
+from dateutil.relativedelta import relativedelta
 from sqlalchemy import and_, func, extract, or_
 from pydantic import BaseModel
 import calendar
@@ -2098,15 +2099,6 @@ def edit_transaction(data: EditTransaction, authorization: str = Header(None)):
         transaction.category = data.category
         transaction.amount = data.amount
 
-        if transaction.transfer_group_id is not None and transaction.category in [
-            "Transfer In",
-            "Transfer Out",
-        ]:
-            raise HTTPException(
-                status_code=400,
-                detail="Editing transfer transactions is not allowed.",
-            )
-
         target_wallet = (
             db.query(Wallet)
             .filter(Wallet.id == data.walletId, Wallet.user_id == user_id)
@@ -2199,6 +2191,250 @@ def transfer_money(data: TransferMoney, authorization: str = Header(None)):
 
         db.commit()
         return {"message": "Transfer completed successfully."}
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+class RenderAutomation(BaseModel):
+    wallet_id: str
+
+
+@app.post("/api/render-automation")
+def render_automation(data: RenderAutomation, authorization: str = Header(None)):
+    db = SessionLocal()
+    try:
+        # 1. Verify the token to get the user_id
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid request.")
+        token = authorization.split(" ")[1]
+        user_id = verify_access_token(token=token)
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User not found.")
+
+        # 2. Fetch automation settings for the specified wallet
+        all_automations = (
+            db.query(Automation)
+            .filter(
+                Automation.wallet_from == data.wallet_id, Automation.user_id == user_id
+            )
+            .order_by(Automation.scheduled_date.asc())
+            .all()
+        )
+
+        automation_details = []
+        for automation in all_automations:
+            if automation.interval == "Daily":
+                if automation.value == 1:
+                    interval = "1 Day"
+                else:
+                    interval = f"{automation.value} Days"
+            elif automation.interval == "Monthly":
+                if automation.value == 1:
+                    interval = "1 Month"
+                else:
+                    interval = f"{automation.value} Months"
+            elif automation.interval == "Yearly":
+                if automation.value == 1:
+                    interval = "1 Year"
+                else:
+                    interval = f"{automation.value} Years"
+            automation = {
+                "id": automation.id,
+                "wallet_to": automation.wallet_to,
+                "tags": automation.tags,
+                "category": automation.category,
+                "amount": automation.amount,
+                "interval": interval,
+                "scheduled_date": automation.scheduled_date.strftime("%Y-%m-%d"),
+            }
+            automation_details.append(automation)
+        return automation_details
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+class AddAutomation(BaseModel):
+    wallet_from: Optional[str] = None
+    wallet_to: str
+    tags: Optional[str] = None
+    category: Optional[str] = None
+    amount: float
+    interval: str
+    value: int
+
+
+@app.post("/api/add-automation/{type}")
+def add_automation(type: str, data: AddAutomation, authorization: str = Header(None)):
+    db = SessionLocal()
+    try:
+        # 1. Verify the token to get the user_id
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid request.")
+        token = authorization.split(" ")[1]
+        user_id = verify_access_token(token=token)
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User not found.")
+
+        if data.interval == "Daily":
+            scheduled_date = date.today() + timedelta(days=data.value)
+        elif data.interval == "Monthly":
+            scheduled_date = date.today() + relativedelta(months=data.value)
+        elif data.interval == "Yearly":
+            scheduled_date = date.today() + relativedelta(years=data.value)
+
+        if type not in ["transaction", "transfer"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid type. Must be either 'transaction' or 'transfer'.",
+            )
+        elif type == "transaction":
+            target_wallet = (
+                db.query(Wallet)
+                .filter(Wallet.id == data.wallet_to, Wallet.user_id == user_id)
+                .first()
+            )
+            # 2. Create the new automation
+            new_automation = Automation(
+                wallet_to=target_wallet.name if target_wallet else "Unknown Wallet",
+                wallet_from=data.wallet_to,
+                interval=data.interval,
+                value=data.value,
+                tags=data.tags,
+                category=data.category,
+                amount=data.amount,
+                scheduled_date=scheduled_date,
+                user_id=user_id,
+            )
+
+        elif type == "transfer":
+            tags = f"Transfer to {data.wallet_to}"
+            category = "Transfer"
+
+            wallets = db.query(Wallet).filter(Wallet.user_id == user_id).all()
+            if data.wallet_to not in [wallet.name for wallet in wallets]:
+                raise HTTPException(
+                    status_code=404, detail="This wallet does not exist."
+                )
+
+            new_automation = Automation(
+                wallet_to=data.wallet_to,
+                wallet_from=data.wallet_from,
+                interval=data.interval,
+                value=data.value,
+                tags=tags,
+                category=category,
+                amount=data.amount,
+                scheduled_date=scheduled_date,
+                user_id=user_id,
+            )
+        db.add(new_automation)
+        db.commit()
+        return {"message": "Automation added successfully."}
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+class UpdateAutomation(BaseModel):
+    automation_id: str
+    tags: str
+    category: str
+    amount: float
+    interval: str
+    value: int
+
+
+@app.post("/api/update-automation")
+def update_automation(data: UpdateAutomation, authorization: str = Header(None)):
+    db = SessionLocal()
+    try:
+        # 1. Verify the token to get the user_id
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid request.")
+        token = authorization.split(" ")[1]
+        user_id = verify_access_token(token=token)
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User not found.")
+
+        automation = (
+            db.query(Automation)
+            .filter(Automation.id == data.automation_id, Automation.user_id == user_id)
+            .first()
+        )
+        if not automation:
+            raise HTTPException(status_code=404, detail="Automation not found.")
+
+        if data.interval == "Daily":
+            scheduled_date = date.today() + timedelta(days=data.value)
+        elif data.interval == "Monthly":
+            scheduled_date = date.today() + relativedelta(months=data.value)
+        elif data.interval == "Yearly":
+            scheduled_date = date.today() + relativedelta(years=data.value)
+
+        # Update the automation details
+        automation.tags = data.tags
+        automation.category = data.category
+        automation.amount = data.amount
+        automation.interval = data.interval
+        automation.value = data.value
+        automation.scheduled_date = scheduled_date
+
+        db.commit()
+        return {"message": "Automation updated successfully."}
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+class DeleteAutomation(BaseModel):
+    automation_id: int
+
+
+@app.post("/api/delete-automation")
+def delete_automation(data: DeleteAutomation, authorization: str = Header(None)):
+    db = SessionLocal()
+    try:
+        # 1. Verify the token to get the user_id
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Invalid request.")
+        token = authorization.split(" ")[1]
+        user_id = verify_access_token(token=token)
+        if not user_id:
+            raise HTTPException(status_code=401, detail="User not found.")
+
+        automation = (
+            db.query(Automation)
+            .filter(Automation.id == data.automation_id, Automation.user_id == user_id)
+            .first()
+        )
+        if not automation:
+            raise HTTPException(status_code=404, detail="Automation not found.")
+
+        db.delete(automation)
+        db.commit()
+        return {"message": "Automation deleted successfully."}
 
     except HTTPException as he:
         raise he
