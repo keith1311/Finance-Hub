@@ -970,7 +970,7 @@ incomeForm.addEventListener("submit", async (event) => {
     }
 
     // Success: Reset form and close dialog
-    incDateWarning.innerHTML = "*This is optional.";
+    incDateWarning.innerHTML = "";
     incAmtWarning.innerHTML = "";
     incTagWarning.innerHTML = "";
     incomeForm.reset();

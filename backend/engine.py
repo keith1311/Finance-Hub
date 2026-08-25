@@ -61,7 +61,6 @@ def recalculate_balance_after(
         .order_by(Transactions.date.desc(), Transactions.id.desc())
         .first()
     )
-    print(f"Previous transaction before {target_date}: {previous_tx.tags}")
 
     # Set starting balance baseline
     running_balance = float(previous_tx.balance_after) if previous_tx else 0.0
@@ -84,9 +83,6 @@ def recalculate_balance_after(
         # the wallet balance should revert to the previous transaction's balance (or 0.0)
         if target_wallet:
             target_wallet.balance = running_balance
-            print(
-                f"No future transactions left for wallet {target_wallet.id}. Reset balance to: {running_balance}"
-            )
     else:
         # Loop through and recalculate each row sequentially
         for tx in update_transactions:
@@ -102,10 +98,8 @@ def recalculate_balance_after(
 
         # 4. Update the main wallet's total balance using the absolute latest transaction
         if target_wallet and last_tx:
-            print(
-                f"Final balance for wallet {target_wallet.id}: {last_tx.balance_after}, {last_tx.tags}"
-            )
             target_wallet.balance = last_tx.balance_after
+    return
 
 
 def create_access_token(data: dict):
@@ -2180,7 +2174,6 @@ def transfer_money(data: TransferMoney, authorization: str = Header(None)):
             wallet_id=to_wallet.id,
             transfer_group_id=group_id,
         )
-
         db.add(transfer_out)
         db.add(transfer_in)
         db.flush()  # Flush to get IDs without committing yet
