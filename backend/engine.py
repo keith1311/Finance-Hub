@@ -1491,6 +1491,55 @@ class AddIncome(BaseModel):
     wallet_id: str
 
 
+def income_function(db, user_id, data):
+    target_wallet = (
+        db.query(Wallet)
+        .filter(Wallet.id == data.wallet_id, Wallet.user_id == user_id)
+        .first()
+    )
+    if not target_wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found.")
+
+    # 2. Check the latest existing transaction date FIRST (before adding the new one)
+    latest_transaction = (
+        db.query(Transactions)
+        .filter(Transactions.wallet_id == data.wallet_id)
+        .order_by(Transactions.date.desc(), Transactions.id.desc())
+        .first()
+    )
+
+    # If you are returning a dictionary or model, ensure the field is just a date
+    formatted_date = data.date.date() if hasattr(data.date, "date") else data.date
+
+    # 3. Create the new transaction object (don't calculate balance_after manually yet)
+    new_transaction = Transactions(
+        date=formatted_date,
+        tags=data.tag,
+        category="Income",
+        amount=data.amount,
+        wallet_id=data.wallet_id,
+    )
+    db.add(new_transaction)
+    db.flush()  # Flushes to give new_transaction an ID without committing yet
+
+    # 4. Branch based on whether it's backdated or the newest entry
+    if latest_transaction and latest_transaction.date > data.date:
+        # It's backdated! Let the recalculator handle the whole chain safely
+        recalculate_balance_after(data.wallet_id, data.date, target_wallet, db)
+        db.commit()  # Commit after recalculation
+    else:
+        # Fast path: It's today or the newest entry
+        previous_balance = (
+            float(latest_transaction.balance_after) if latest_transaction else 0.0
+        )
+        new_transaction.balance_after = previous_balance + data.amount
+        target_wallet.balance = new_transaction.balance_after
+        db.commit()
+
+    db.refresh(new_transaction)
+    return
+
+
 @app.post("/api/add-income")
 def add_income(data: AddIncome, authorization: str = Header(None)):
     db = SessionLocal()
@@ -1504,51 +1553,8 @@ def add_income(data: AddIncome, authorization: str = Header(None)):
         if not user_id:
             raise HTTPException(status_code=401, detail="User not found.")
 
-        target_wallet = (
-            db.query(Wallet)
-            .filter(Wallet.id == data.wallet_id, Wallet.user_id == user_id)
-            .first()
-        )
-        if not target_wallet:
-            raise HTTPException(status_code=404, detail="Wallet not found.")
+        income_function(db, user_id, data)
 
-        # 2. Check the latest existing transaction date FIRST (before adding the new one)
-        latest_transaction = (
-            db.query(Transactions)
-            .filter(Transactions.wallet_id == data.wallet_id)
-            .order_by(Transactions.date.desc(), Transactions.id.desc())
-            .first()
-        )
-
-        # If you are returning a dictionary or model, ensure the field is just a date
-        formatted_date = data.date.date() if hasattr(data.date, "date") else data.date
-
-        # 3. Create the new transaction object (don't calculate balance_after manually yet)
-        new_transaction = Transactions(
-            date=formatted_date,
-            tags=data.tag,
-            category="Income",
-            amount=data.amount,
-            wallet_id=data.wallet_id,
-        )
-        db.add(new_transaction)
-        db.flush()  # Flushes to give new_transaction an ID without committing yet
-
-        # 4. Branch based on whether it's backdated or the newest entry
-        if latest_transaction and latest_transaction.date > data.date:
-            # It's backdated! Let the recalculator handle the whole chain safely
-            recalculate_balance_after(data.wallet_id, data.date, target_wallet, db)
-            db.commit()  # Commit after recalculation
-        else:
-            # Fast path: It's today or the newest entry
-            previous_balance = (
-                float(latest_transaction.balance_after) if latest_transaction else 0.0
-            )
-            new_transaction.balance_after = previous_balance + data.amount
-            target_wallet.balance = new_transaction.balance_after
-            db.commit()
-
-        db.refresh(new_transaction)
         return {"message": "Income added successfully"}
 
     except HTTPException as he:
@@ -1570,6 +1576,56 @@ class CreateTransaction(BaseModel):
     wallet_id: str
 
 
+def transaction_function(db, user_id, data):
+    # 1. Verify wallet belongs to the user
+    target_wallet = (
+        db.query(Wallet)
+        .filter(Wallet.id == data.wallet_id, Wallet.user_id == user_id)
+        .first()
+    )
+    if not target_wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found.")
+
+    # 2. Check the latest existing transaction date FIRST (before adding the new one)
+    latest_transaction = (
+        db.query(Transactions)
+        .filter(Transactions.wallet_id == data.wallet_id)
+        .order_by(Transactions.date.desc(), Transactions.id.desc())
+        .first()
+    )
+
+    # Ensure the field is just a date object
+    formatted_date = data.date.date() if hasattr(data.date, "date") else data.date
+
+    # 3. Create the new transaction object
+    new_transaction = Transactions(
+        date=formatted_date,
+        tags=data.tag,
+        category=data.category,
+        amount=data.amount,
+        wallet_id=data.wallet_id,
+    )
+    db.add(new_transaction)
+    db.flush()  # Flushes to give it an ID without committing yet
+
+    # 4. Branch based on whether it's backdated or the newest entry
+    if latest_transaction and latest_transaction.date > data.date:
+        # It's backdated! Let the recalculator handle the whole chain safely
+        recalculate_balance_after(data.wallet_id, data.date, target_wallet, db)
+        db.commit()  # Commit after recalculation
+    else:
+        # Fast path: It's today or the newest entry
+        previous_balance = (
+            float(latest_transaction.balance_after) if latest_transaction else 0.0
+        )
+        new_transaction.balance_after = previous_balance - data.amount
+        target_wallet.balance = new_transaction.balance_after
+        db.commit()
+
+    db.refresh(new_transaction)
+    return
+
+
 @app.post("/api/create-transaction")
 def create_transaction(data: CreateTransaction, authorization: str = Header(None)):
     db = SessionLocal()
@@ -1583,51 +1639,7 @@ def create_transaction(data: CreateTransaction, authorization: str = Header(None
         if not user_id:
             raise HTTPException(status_code=401, detail="User not found.")
 
-        target_wallet = (
-            db.query(Wallet)
-            .filter(Wallet.id == data.wallet_id, Wallet.user_id == user_id)
-            .first()
-        )
-        if not target_wallet:
-            raise HTTPException(status_code=404, detail="Wallet not found.")
-
-        # 2. Check the latest existing transaction date FIRST (before adding the new one)
-        latest_transaction = (
-            db.query(Transactions)
-            .filter(Transactions.wallet_id == data.wallet_id)
-            .order_by(Transactions.date.desc(), Transactions.id.desc())
-            .first()
-        )
-
-        # If you are returning a dictionary or model, ensure the field is just a date
-        formatted_date = data.date.date() if hasattr(data.date, "date") else data.date
-
-        # 3. Create the new transaction object
-        new_transaction = Transactions(
-            date=formatted_date,
-            tags=data.tag,
-            category=data.category,
-            amount=data.amount,
-            wallet_id=data.wallet_id,
-        )
-        db.add(new_transaction)
-        db.flush()  # Flushes to get an ID without committing yet
-
-        # 4. Branch based on whether it's backdated or the newest entry
-        if latest_transaction and latest_transaction.date > data.date:
-            # It's backdated! Let the recalculator handle the whole chain safely
-            recalculate_balance_after(data.wallet_id, data.date, target_wallet, db)
-            db.commit()  # Commit after recalculation
-        else:
-            # Fast path: It's today or the newest entry (Always an expense/withdrawal here)
-            previous_balance = (
-                float(latest_transaction.balance_after) if latest_transaction else 0.0
-            )
-            new_transaction.balance_after = previous_balance - data.amount
-            target_wallet.balance = new_transaction.balance_after
-            db.commit()
-
-        db.refresh(new_transaction)
+        transaction_function(db, user_id, data)
         return {"message": "Transaction created successfully"}
 
     except HTTPException as he:
@@ -1844,9 +1856,6 @@ def delete_transaction(data: DeleteTransaction, authorization: str = Header(None
             affected_wallet = db.query(Wallet).filter(Wallet.id == w_id).first()
             if affected_wallet:
                 recalculate_balance_after(w_id, t_date, affected_wallet, db)
-                print(
-                    f"Recalculated balances for wallet {affected_wallet.name} after deleting transaction(s) on {t_date}"
-                )
 
         db.commit()
         return {"message": "Transaction deleted successfully"}
@@ -2122,6 +2131,61 @@ class TransferMoney(BaseModel):
     to_wallet: str
 
 
+def transfer_function(db, user_id, data):
+    from_wallet = (
+        db.query(Wallet)
+        .filter(Wallet.id == data.from_wallet_id, Wallet.user_id == user_id)
+        .first()
+    )
+    to_wallet = (
+        db.query(Wallet)
+        .filter(Wallet.name == data.to_wallet, Wallet.user_id == user_id)
+        .first()
+    )
+
+    if not from_wallet or not to_wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found.")
+
+    if from_wallet.id == to_wallet.id:
+        raise HTTPException(
+            status_code=400, detail="Cannot transfer money to the same wallet."
+        )
+
+    # Ensure the field is just a date object
+    formatted_date = data.date.date() if hasattr(data.date, "date") else data.date
+
+    # Create two transactions: one for the source wallet and one for the destination wallet
+    group_id = uuid.uuid4()
+
+    transfer_out = Transactions(
+        date=formatted_date,
+        tags=f"Transfer to {to_wallet.name}",
+        category="Transfer Out",
+        amount=data.amount,
+        wallet_id=data.from_wallet_id,
+        transfer_group_id=group_id,
+    )
+    transfer_in = Transactions(
+        date=formatted_date,
+        tags=f"Transfer from {from_wallet.name}",
+        category="Transfer In",
+        amount=data.amount,
+        wallet_id=to_wallet.id,
+        transfer_group_id=group_id,
+    )
+    db.add(transfer_out)
+    db.add(transfer_in)
+    db.flush()  # Flush to get IDs without committing yet
+
+    # Recalculate balances for both wallets
+    recalculate_balance_after(data.from_wallet_id, formatted_date, from_wallet, db)
+    recalculate_balance_after(to_wallet.id, formatted_date, to_wallet, db)
+
+    db.commit()
+
+    return
+
+
 @app.post("/api/transfer-money")
 def transfer_money(data: TransferMoney, authorization: str = Header(None)):
     db = SessionLocal()
@@ -2135,54 +2199,8 @@ def transfer_money(data: TransferMoney, authorization: str = Header(None)):
         if not user_id:
             raise HTTPException(status_code=401, detail="User not found.")
 
-        from_wallet = (
-            db.query(Wallet)
-            .filter(Wallet.id == data.from_wallet_id, Wallet.user_id == user_id)
-            .first()
-        )
-        to_wallet = (
-            db.query(Wallet)
-            .filter(Wallet.name == data.to_wallet, Wallet.user_id == user_id)
-            .first()
-        )
+        transfer_function(db, user_id, data)
 
-        if not from_wallet or not to_wallet:
-            raise HTTPException(status_code=404, detail="Wallet not found.")
-
-        if from_wallet.id == to_wallet.id:
-            raise HTTPException(
-                status_code=400, detail="Cannot transfer money to the same wallet."
-            )
-
-        # Create two transactions: one for the source wallet and one for the destination wallet
-
-        group_id = uuid.uuid4()
-
-        transfer_out = Transactions(
-            date=data.date,
-            tags=f"Transfer to {to_wallet.name}",
-            category="Transfer Out",
-            amount=data.amount,
-            wallet_id=data.from_wallet_id,
-            transfer_group_id=group_id,
-        )
-        transfer_in = Transactions(
-            date=data.date,
-            tags=f"Transfer from {from_wallet.name}",
-            category="Transfer In",
-            amount=data.amount,
-            wallet_id=to_wallet.id,
-            transfer_group_id=group_id,
-        )
-        db.add(transfer_out)
-        db.add(transfer_in)
-        db.flush()  # Flush to get IDs without committing yet
-
-        # Recalculate balances for both wallets
-        recalculate_balance_after(data.from_wallet_id, data.date, from_wallet, db)
-        recalculate_balance_after(to_wallet.id, data.date, to_wallet, db)
-
-        db.commit()
         return {"message": "Transfer completed successfully."}
 
     except HTTPException as he:
@@ -2433,6 +2451,69 @@ def delete_automation(data: DeleteAutomation, authorization: str = Header(None))
         raise he
     except Exception as e:
         db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@app.get("/api/run-automations")
+def run_automations(request: Request):
+    try:
+        # 1. Verify the request's authorization header against the expected token
+        auth_header = request.headers.get("authorization")
+
+        # 2. Build what the expected token should look like
+        expected_token = f"Bearer {os.getenv('CRON_SECRET')}"
+
+        # 3. Check if it matches; if not, block them immediately
+        if auth_header != expected_token:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+        db = SessionLocal()
+        automations_to_run = (
+            db.query(Automation).filter(Automation.scheduled_date == date.today()).all()
+        )
+
+        for automation in automations_to_run:
+            if automation.category == "Transfer":
+                transfer_data = TransferMoney(
+                    date=automation.scheduled_date,
+                    amount=automation.amount,
+                    from_wallet_id=automation.wallet_from,
+                    to_wallet=automation.wallet_to,
+                )
+                transfer_function(db, automation.user_id, transfer_data)
+            elif automation.category == "Income":
+                transaction_data = AddIncome(
+                    date=automation.scheduled_date,
+                    tag=automation.tags,
+                    amount=automation.amount,
+                    wallet_id=automation.wallet_from,
+                )
+                income_function(db, automation.user_id, transaction_data)
+            else:
+                transaction_data = CreateTransaction(
+                    date=automation.scheduled_date,
+                    tag=automation.tags,
+                    category=automation.category,
+                    amount=automation.amount,
+                    wallet_id=automation.wallet_from,
+                )
+                transaction_function(db, automation.user_id, transaction_data)
+
+            # Update the next scheduled date based on the interval
+            if automation.interval == "Daily":
+                automation.scheduled_date += timedelta(days=automation.value)
+            elif automation.interval == "Monthly":
+                automation.scheduled_date += relativedelta(months=automation.value)
+            elif automation.interval == "Yearly":
+                automation.scheduled_date += relativedelta(years=automation.value)
+
+            db.commit()  # Commit after each automation to ensure changes are saved
+        return {"message": "Automations executed successfully."}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()

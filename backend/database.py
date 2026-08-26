@@ -3,6 +3,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 import os
 from dotenv import load_dotenv
 
+
 # 1. Your connection URL (remember to swap in your real password)
 load_dotenv()
 USER = os.getenv("user")
@@ -13,6 +14,8 @@ DBNAME = os.getenv("dbname")
 DATABASE_URL = (
     f"postgresql+psycopg2://{USER}:{PASSWORD}@{HOST}:{PORT}/{DBNAME}?sslmode=require"
 )
+
+# DATABASE_URL = "postgresql://postgres:1234@localhost:5432/finance_hub"
 
 # 2. The engine connects Python to PostgreSQL
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
