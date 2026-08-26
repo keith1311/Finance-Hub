@@ -7,6 +7,10 @@ const apiURL = "https://finance-hub-qakq.onrender.com";
 currentIndex = parseInt(localStorage.getItem("currentIndex"));
 theme = localStorage.getItem("theme");
 
+if (!token) {
+  window.location.href = "https://finance-hub-sepia-seven.vercel.app";
+}
+
 // 2. Check if it's null (or NaN if nothing was found)
 if (isNaN(currentIndex)) {
   currentIndex = 2;
@@ -1361,6 +1365,52 @@ function renderAutomationTable(transactionData, tableContainer) {
   }
 }
 
+const addAutomationBtn = document.getElementById("add-auto");
+addAutomationBtn.addEventListener("click", () => {
+  const addAutomationDialog = document.getElementById("tran-auto-dialog");
+  const today = new Date().toLocaleDateString("en-CA");
+  document.getElementById("tran-auto-date").value = today;
+  addAutomationDialog.showModal();
+  document.getElementById("tran-auto-tag").focus();
+});
+
+const backToTran = document.getElementById("back");
+backToTran.addEventListener("click", () => {
+  const today = new Date().toLocaleDateString("en-CA");
+  document.getElementById("tran-auto-date").value = today;
+  document.getElementById("tran-auto-dialog").showModal();
+  document.getElementById("transfer-auto-date-warning-text").innerHTML = "";
+  document.getElementById("transfer-auto-wallet-warning-text").innerHTML = "";
+  document.getElementById("transfer-auto-amt-warning-text").innerHTML = "";
+  document.getElementById("transfer-auto-value-warning-text").innerHTML = "";
+  document.getElementById("transfer-auto-date").value = "";
+  document.getElementById("transfer-auto-wallet").value = "";
+  document.getElementById("transfer-auto-amt").value = "";
+  document.getElementById("transfer-interval").value = "Daily";
+  document.getElementById("transfer-auto-value").value = "";
+
+  document.getElementById("transfer-auto-dialog").close();
+});
+
+const toTransferBtn = document.getElementById("to-transfer");
+toTransferBtn.addEventListener("click", () => {
+  const today = new Date().toLocaleDateString("en-CA");
+  document.getElementById("transfer-auto-date").value = today;
+  document.getElementById("transfer-auto-dialog").showModal();
+  document.getElementById("tran-auto-date-warning-text").innerHTML = "";
+  document.getElementById("tran-auto-tag-warning-text").innerHTML = "";
+  document.getElementById("tran-auto-amt-warning-text").innerHTML = "";
+  document.getElementById("tran-auto-value-warning-text").innerHTML = "";
+  document.getElementById("tran-auto-date").value = "";
+  document.getElementById("tran-auto-tag").value = "";
+  document.getElementById("tran-auto-cat").value = "Income";
+  document.getElementById("tran-auto-amt").value = "";
+  document.getElementById("tran-interval").value = "Daily";
+  document.getElementById("tran-auto-value").value = "";
+
+  document.getElementById("tran-auto-dialog").close();
+});
+
 // =================== Edit Automation Function  =================== //
 function editAutomation(automationId) {
   const editAutomationDialog = document.getElementById("edit-auto-dialog");
@@ -1642,6 +1692,8 @@ const transactionAutomationDialog = document.getElementById("tran-auto-dialog");
 
 transactionAutomationForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const today = new Date().toLocaleDateString("en-CA");
+  const date = document.getElementById("tran-auto-date").value;
   const tags = document
     .getElementById("tran-auto-tag")
     .value.trim() // Remove spaces from the very beginning and end
@@ -1653,11 +1705,22 @@ transactionAutomationForm.addEventListener("submit", async (event) => {
   const interval = document.getElementById("tran-interval").value;
   const value = document.getElementById("tran-auto-value").value;
 
+  if (date < today) {
+    document.getElementById("tran-auto-date").value = today;
+    document.getElementById("tran-auto-date-warning-text").innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Date cannot be in the past.';
+    document.getElementById("tran-auto-tag-warning-text").innerHTML = "";
+    document.getElementById("tran-auto-amt-warning-text").innerHTML = "";
+    document.getElementById("tran-auto-value-warning-text").innerHTML = "";
+    return;
+  }
+
   if (tags === "") {
     document.getElementById("tran-auto-tag-warning-text").innerHTML =
       '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
     document.getElementById("tran-auto-amt-warning-text").innerHTML = "";
     document.getElementById("tran-auto-value-warning-text").innerHTML = "";
+    document.getElementById("tran-auto-date-warning-text").innerHTML = "";
     return;
   }
 
@@ -1666,6 +1729,8 @@ transactionAutomationForm.addEventListener("submit", async (event) => {
       '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
     document.getElementById("tran-auto-tag-warning-text").innerHTML = "";
     document.getElementById("tran-auto-value-warning-text").innerHTML = "";
+    document.getElementById("tran-auto-date-warning-text").innerHTML = "";
+
     return;
   }
 
@@ -1674,6 +1739,7 @@ transactionAutomationForm.addEventListener("submit", async (event) => {
       '<i class="fa-solid fa-triangle-exclamation"></i> Amount must be greater than zero.';
     document.getElementById("tran-auto-tag-warning-text").innerHTML = "";
     document.getElementById("tran-auto-value-warning-text").innerHTML = "";
+    document.getElementById("tran-auto-date-warning-text").innerHTML = "";
     document.getElementById("tran-auto-amt").value = "";
     return;
   }
@@ -1683,6 +1749,7 @@ transactionAutomationForm.addEventListener("submit", async (event) => {
       '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
     document.getElementById("tran-auto-tag-warning-text").innerHTML = "";
     document.getElementById("tran-auto-amt-warning-text").innerHTML = "";
+    document.getElementById("tran-auto-date-warning-text").innerHTML = "";
     return;
   }
 
@@ -1691,6 +1758,7 @@ transactionAutomationForm.addEventListener("submit", async (event) => {
       '<i class="fa-solid fa-triangle-exclamation"></i> Value must be greater than zero.';
     document.getElementById("tran-auto-tag-warning-text").innerHTML = "";
     document.getElementById("tran-auto-amt-warning-text").innerHTML = "";
+    document.getElementById("tran-auto-date-warning-text").innerHTML = "";
     document.getElementById("tran-auto-value").value = "";
     return;
   }
@@ -1708,6 +1776,7 @@ transactionAutomationForm.addEventListener("submit", async (event) => {
         Authorization: "Bearer " + token,
       },
       body: JSON.stringify({
+        date: date,
         tags: tags,
         category: category,
         amount: parseFloat(amount),
@@ -1732,6 +1801,7 @@ transactionAutomationForm.addEventListener("submit", async (event) => {
     }
 
     // Success: Reset form and close dialog
+    document.getElementById("tran-auto-date-warning-text").innerHTML = "";
     document.getElementById("tran-auto-amt-warning-text").innerHTML = "";
     document.getElementById("tran-auto-tag-warning-text").innerHTML = "";
     document.getElementById("tran-auto-value-warning-text").innerHTML = "";
@@ -1750,6 +1820,8 @@ const transferAutomationDialog = document.getElementById(
 
 transferAutomationForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const today = new Date().toLocaleDateString("en-CA");
+  const date = document.getElementById("transfer-auto-date").value;
   const walletTo = document
     .getElementById("transfer-auto-wallet")
     .value.trim() // Remove spaces from the very beginning and end
@@ -1760,11 +1832,21 @@ transferAutomationForm.addEventListener("submit", async (event) => {
   const interval = document.getElementById("transfer-interval").value;
   const value = document.getElementById("transfer-auto-value").value;
 
+  if (date < today) {
+    document.getElementById("transfer-auto-date").value = today;
+    document.getElementById("transfer-auto-date-warning-text").innerHTML =
+      '<i class="fa-solid fa-triangle-exclamation"></i> Date cannot be in the past.';
+    document.getElementById("transfer-auto-wallet-warning-text").innerHTML = "";
+    document.getElementById("transfer-auto-amt-warning-text").innerHTML = "";
+    document.getElementById("transfer-auto-value-warning-text").innerHTML = "";
+    return;
+  }
   if (walletTo === "") {
     document.getElementById("transfer-auto-wallet-warning-text").innerHTML =
       '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
     document.getElementById("transfer-auto-amt-warning-text").innerHTML = "";
     document.getElementById("transfer-auto-value-warning-text").innerHTML = "";
+    document.getElementById("transfer-auto-date-warning-text").innerHTML = "";
     return;
   }
 
@@ -1773,6 +1855,7 @@ transferAutomationForm.addEventListener("submit", async (event) => {
       '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
     document.getElementById("transfer-auto-wallet-warning-text").innerHTML = "";
     document.getElementById("transfer-auto-value-warning-text").innerHTML = "";
+    document.getElementById("transfer-auto-date-warning-text").innerHTML = "";
     return;
   }
 
@@ -1782,6 +1865,7 @@ transferAutomationForm.addEventListener("submit", async (event) => {
     document.getElementById("transfer-auto-wallet-warning-text").innerHTML = "";
     document.getElementById("transfer-auto-value-warning-text").innerHTML = "";
     document.getElementById("transfer-auto-amt").value = "";
+    document.getElementById("transfer-auto-date-warning-text").innerHTML = "";
     return;
   }
 
@@ -1790,6 +1874,7 @@ transferAutomationForm.addEventListener("submit", async (event) => {
       '<i class="fa-solid fa-triangle-exclamation"></i> This field is required.';
     document.getElementById("transfer-auto-wallet-warning-text").innerHTML = "";
     document.getElementById("transfer-auto-amt-warning-text").innerHTML = "";
+    document.getElementById("transfer-auto-date-warning-text").innerHTML = "";
     return;
   }
 
@@ -1799,6 +1884,7 @@ transferAutomationForm.addEventListener("submit", async (event) => {
     document.getElementById("transfer-auto-wallet-warning-text").innerHTML = "";
     document.getElementById("transfer-auto-amt-warning-text").innerHTML = "";
     document.getElementById("transfer-auto-value").value = "";
+    document.getElementById("transfer-auto-date-warning-text").innerHTML = "";
     return;
   }
   try {
@@ -1815,6 +1901,7 @@ transferAutomationForm.addEventListener("submit", async (event) => {
         Authorization: "Bearer " + token,
       },
       body: JSON.stringify({
+        date: date,
         wallet_to: walletTo,
         amount: parseFloat(amount),
         interval: interval,
@@ -1837,6 +1924,8 @@ transferAutomationForm.addEventListener("submit", async (event) => {
           "";
         document.getElementById("transfer-auto-value-warning-text").innerHTML =
           "";
+        document.getElementById("transfer-auto-date-warning-text").innerHTML =
+          "";
         return;
       }
 
@@ -1852,6 +1941,7 @@ transferAutomationForm.addEventListener("submit", async (event) => {
     document.getElementById("transfer-auto-amt-warning-text").innerHTML = "";
     document.getElementById("transfer-auto-wallet-warning-text").innerHTML = "";
     document.getElementById("transfer-auto-value-warning-text").innerHTML = "";
+    document.getElementById("transfer-auto-date-warning-text").innerHTML = "";
     transferAutomationForm.reset();
     transferAutomationDialog.close();
     fetchAndRenderAutomation();

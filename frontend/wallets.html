@@ -668,7 +668,10 @@
       <button
         class="password-close"
         style="margin-right: 1px"
-        onclick="document.getElementById('manage-auto-dialog').close()"
+        onclick="
+          fetchAndRenderWalletPage();
+          document.getElementById('manage-auto-dialog').close();
+        "
       >
         <i class="fa-solid fa-circle-xmark" style="color: rgb(210, 5, 5)"></i>
       </button>
@@ -691,7 +694,6 @@
             margin-right: 10px;
             margin-bottom: 10px;
           "
-          onclick="document.getElementById('tran-auto-dialog').showModal()"
         >
           <i class="fa-solid fa-plus"></i>&nbsp;Add Automation
         </button>
@@ -713,12 +715,20 @@
       </div>
     </dialog>
 
-    <!-- ======================Transaction Automation Dialog ====================== -->
+    <!-- ====================== Transaction Automation Dialog ====================== -->
     <dialog class="dialog-box" id="tran-auto-dialog">
       <form id="tran-auto-form" method="dialog">
         <h3>Add Automated Transaction</h3>
 
         <div class="input-group">
+          <label for="tran-auto-date">Choose A Date</label>
+          <input type="date" id="tran-auto-date" name="tran-auto-date" />
+          <p
+            style="margin-bottom: 2px"
+            class="warning-text"
+            id="tran-auto-date-warning-text"
+          ></p>
+
           <label for="tran-auto-tag">Enter Tags</label>
           <input
             type="text"
@@ -781,28 +791,14 @@
             class="btn-save"
             style="margin-right: 70px"
             type="button"
-            onclick="
-              document.getElementById('transfer-auto-dialog').showModal();
-              document.getElementById('tran-auto-tag-warning-text').innerHTML =
-                '';
-              document.getElementById('tran-auto-amt-warning-text').innerHTML =
-                '';
-              document.getElementById(
-                'tran-auto-value-warning-text',
-              ).innerHTML = '';
-              document.getElementById('tran-auto-tag').value = '';
-              document.getElementById('tran-auto-cat').value = 'Income';
-              document.getElementById('tran-auto-amt').value = '';
-              document.getElementById('tran-interval').value = 'Daily';
-              document.getElementById('tran-auto-value').value = '';
-
-              document.getElementById('tran-auto-dialog').close();
-            "
+            id="to-transfer"
           >
             <i class="fa-solid fa-right-left"></i>&nbsp;Transfer
           </button>
           <button
             onclick="
+              document.getElementById('tran-auto-date-warning-text').innerHTML =
+                '';
               document.getElementById('tran-auto-tag-warning-text').innerHTML =
                 '';
               document.getElementById('tran-auto-amt-warning-text').innerHTML =
@@ -810,12 +806,12 @@
               document.getElementById(
                 'tran-auto-value-warning-text',
               ).innerHTML = '';
+              document.getElementById('tran-auto-date').value = '';
               document.getElementById('tran-auto-tag').value = '';
               document.getElementById('tran-auto-cat').value = 'Income';
               document.getElementById('tran-auto-amt').value = '';
               document.getElementById('tran-interval').value = 'Daily';
               document.getElementById('tran-auto-value').value = '';
-
               document.getElementById('tran-auto-dialog').close();
             "
             class="btn-cancel"
@@ -823,19 +819,31 @@
           >
             <i class="fa-solid fa-xmark"></i> Cancel
           </button>
-          <button class="btn-save" type="submit" onclick="">
+          <button class="btn-save" type="submit">
             <i class="fa-solid fa-robot"></i>&nbsp;Automate
           </button>
         </div>
       </form>
     </dialog>
 
-    <!-- ======================Transfer Automation Dialog ====================== -->
+    <!-- ====================== Transfer Automation Dialog ====================== -->
     <dialog class="dialog-box" id="transfer-auto-dialog">
       <form id="transfer-auto-form" method="dialog">
         <h3>Add Automated Transfer</h3>
 
         <div class="input-group">
+          <label for="transfer-auto-date">Choose A Date</label>
+          <input
+            type="date"
+            id="transfer-auto-date"
+            name="transfer-auto-date"
+          />
+          <p
+            style="margin-bottom: 2px"
+            class="warning-text"
+            id="transfer-auto-date-warning-text"
+          ></p>
+
           <label for="transfer-auto-wallet">Enter Wallet Name</label>
           <input
             type="text"
@@ -864,7 +872,6 @@
         <div class="input-group">
           <label for="transfer-interval">Interval</label>
           <div style="display: flex; gap: 0px; align-items: center">
-            <!-- ✅ Fixed: Unique ID instead of duplicate 'interval' -->
             <select
               id="transfer-interval"
               class="dropdown-cat"
@@ -891,30 +898,16 @@
             class="btn-save"
             style="margin-right: 70px"
             type="button"
-            onclick="
-              document.getElementById('tran-auto-dialog').showModal();
-              document.getElementById(
-                'transfer-auto-wallet-warning-text',
-              ).innerHTML = '';
-              document.getElementById(
-                'transfer-auto-amt-warning-text',
-              ).innerHTML = '';
-              document.getElementById(
-                'transfer-auto-value-warning-text',
-              ).innerHTML = '';
-              document.getElementById('transfer-auto-wallet').value = '';
-              document.getElementById('transfer-auto-amt').value = '';
-              document.getElementById('transfer-interval').value = 'Daily';
-              document.getElementById('transfer-auto-value').value = '';
-
-              document.getElementById('transfer-auto-dialog').close();
-            "
+            id="back"
           >
             <i class="fa-solid fa-backward"></i>&nbsp;Back
           </button>
           <button
             onclick="
               document.getElementById(
+                'transfer-auto-date-warning-text',
+              ).innerHTML = '';
+              document.getElementById(
                 'transfer-auto-wallet-warning-text',
               ).innerHTML = '';
               document.getElementById(
@@ -923,6 +916,7 @@
               document.getElementById(
                 'transfer-auto-value-warning-text',
               ).innerHTML = '';
+              document.getElementById('transfer-auto-date').value = '';
               document.getElementById('transfer-auto-wallet').value = '';
               document.getElementById('transfer-auto-amt').value = '';
               document.getElementById('transfer-interval').value = 'Daily';

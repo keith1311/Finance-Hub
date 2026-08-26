@@ -2277,6 +2277,7 @@ def render_automation(data: RenderAutomation, authorization: str = Header(None))
 
 
 class AddAutomation(BaseModel):
+    date: date
     wallet_from: Optional[str] = None
     wallet_to: str
     tags: Optional[str] = None
@@ -2299,11 +2300,11 @@ def add_automation(type: str, data: AddAutomation, authorization: str = Header(N
             raise HTTPException(status_code=401, detail="User not found.")
 
         if data.interval == "Daily":
-            scheduled_date = date.today() + timedelta(days=data.value)
+            scheduled_date = data.date + timedelta(days=data.value)
         elif data.interval == "Monthly":
-            scheduled_date = date.today() + relativedelta(months=data.value)
+            scheduled_date = data.date + relativedelta(months=data.value)
         elif data.interval == "Yearly":
-            scheduled_date = date.today() + relativedelta(years=data.value)
+            scheduled_date = data.date + relativedelta(years=data.value)
 
         if type not in ["transaction", "transfer"]:
             raise HTTPException(
@@ -2350,8 +2351,37 @@ def add_automation(type: str, data: AddAutomation, authorization: str = Header(N
                 scheduled_date=scheduled_date,
                 user_id=user_id,
             )
+
         db.add(new_automation)
         db.commit()
+
+        if data.date == date.today():
+            if data.category == "Transfer":
+                transfer_data = TransferMoney(
+                    date=data.date,
+                    amount=data.amount,
+                    from_wallet_id=data.wallet_from,
+                    to_wallet=data.wallet_to,
+                )
+                transfer_function(db, user_id, transfer_data)
+            elif data.category == "Income":
+                transaction_data = AddIncome(
+                    date=data.date,
+                    tag=data.tags,
+                    amount=data.amount,
+                    wallet_id=data.wallet_to,
+                )
+                income_function(db, user_id, transaction_data)
+            else:
+                transaction_data = CreateTransaction(
+                    date=data.date,
+                    tag=data.tags,
+                    category=data.category,
+                    amount=data.amount,
+                    wallet_id=data.wallet_to,
+                )
+                transaction_function(db, user_id, transaction_data)
+
         return {"message": "Automation added successfully."}
 
     except HTTPException as he:
