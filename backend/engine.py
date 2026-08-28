@@ -75,6 +75,11 @@ def recalculate_balance_after(
         .order_by(Transactions.date.asc(), Transactions.id.asc())
         .all()
     )
+
+    update_transactions = sorted(
+        update_transactions, key=lambda tx: (tx.date, tx.id)
+    )  # Ensure correct order
+
     # 3. Loop through and recalculate each row sequentially
     last_tx = None
 
