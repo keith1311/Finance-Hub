@@ -57,10 +57,11 @@ body {
     Arial,
     sans-serif;
   color: var(--text);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto; /* Allow vertical scrolling by default */
 }
 
-@media (max-width: 450px) {
+@media (max-width: 480px) {
   html,
   body {
     overflow-x: auto;
@@ -71,22 +72,52 @@ body {
 .container {
   display: flex;
   flex-direction: column;
-  width: 100%;
+  width: 100vw;
   max-width: 100%;
   padding: 18px;
   gap: 12px;
   box-sizing: border-box;
+  min-height: 100vh;
   height: 100vh;
   overflow-y: auto;
   overflow-x: hidden; /* Desktop stays locked, no side-to-side scrolling */
 }
 
-/* 3. Mobile override: Lock a minimum width and enable side-scrolling */
-@media (max-width: 450px) {
+@media (max-width: 900px) {
+  html,
+  body {
+    overflow-y: auto !important;
+    height: auto !important;
+  }
   .container {
-    min-width: 500px; /* Forces your app layout to stay intact */
+    height: auto !important;
+    overflow-y: visible !important;
+  }
+  .workspace {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .left,
+  .right {
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+  .table-card {
+    min-height: 300px !important;
+    max-height: 400px !important;
+  }
+  .right .card {
+    min-height: 350px !important;
+  }
+}
+
+/* 3. Mobile override: Lock a minimum width and enable side-scrolling */
+@media (max-width: 480px) {
+  .container {
+    min-width: 480px; /* Locks the container to a minimum width on mobile */
     overflow-x: auto; /* Turns on horizontal scrolling ONLY on small screens */
-    height: auto; /* Let the height adjust naturally on mobile */
   }
 }
 .header {
