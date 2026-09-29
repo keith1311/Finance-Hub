@@ -46,7 +46,7 @@
 
 html,
 body {
-  height: 100%;
+  min-height: 100vh;
   margin: 0;
   padding: 0;
   background: var(--bg);
@@ -57,6 +57,7 @@ body {
     Arial,
     sans-serif;
   color: var(--text);
+  overflow: hidden;
 }
 
 @media (max-width: 450px) {
@@ -75,8 +76,7 @@ body {
   padding: 18px;
   gap: 12px;
   box-sizing: border-box;
-  min-height: 100vh;
-  height: auto;
+  height: 100vh;
   overflow-y: auto;
   overflow-x: hidden; /* Desktop stays locked, no side-to-side scrolling */
 }
@@ -86,6 +86,7 @@ body {
   .container {
     min-width: 500px; /* Forces your app layout to stay intact */
     overflow-x: auto; /* Turns on horizontal scrolling ONLY on small screens */
+    height: auto; /* Let the height adjust naturally on mobile */
   }
 }
 .header {
@@ -307,7 +308,7 @@ dialog .wallet {
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 0;
+  min-height: 50%;
   overflow: hidden;
 }
 
@@ -330,17 +331,18 @@ dialog .wallet {
 }
 
 .table-scroll {
-  flex-grow: 1;
+  flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
   margin-top: 0px;
-  min-height: 0;
+  min-height: 40%;
   scrollbar-color: var(--scrollbar-thumb) var(--card);
   scrollbar-width: thin;
-  max-height: 270px;
+  max-height: 100%;
 }
 
-.table_details {
+.table-details {
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 4px;

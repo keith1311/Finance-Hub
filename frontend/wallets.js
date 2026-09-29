@@ -1,14 +1,14 @@
 let currentIndex;
 let theme = "";
 let token = localStorage.getItem("authToken");
-const apiURL = "https://finance-hub-qakq.onrender.com";
-// const apiURL = "http://127.0.0.1:8000";
+// const apiURL = "https://finance-hub-qakq.onrender.com";
+const apiURL = "http://127.0.0.1:8000";
 // 1. Get from localStorage and convert to a number
 currentIndex = parseInt(localStorage.getItem("currentIndex"));
 theme = localStorage.getItem("theme");
 
 if (!token) {
-  window.location.href = "https://finance-hub-sepia-seven.vercel.app";
+  window.location.href = "index.html";
 }
 
 // 2. Check if it's null (or NaN if nothing was found)
