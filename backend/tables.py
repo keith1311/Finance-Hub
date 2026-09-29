@@ -71,13 +71,6 @@ class Transactions(Base):
     wallet = relationship("Wallet", back_populates="transactions")
 
 
-class Access(Base):
-    __tablename__ = "access"
-
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    email = Column(String, unique=True, index=True)
-
-
 class Automation(Base):
     __tablename__ = "automation"
 

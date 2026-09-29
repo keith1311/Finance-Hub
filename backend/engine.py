@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from .database import SessionLocal, Base, engine
-from .tables import Automation, Transactions, Wallet, Users, Access
+from .tables import Automation, Transactions, Wallet, Users
 from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 from sqlalchemy import and_, func, extract, or_
@@ -1388,10 +1388,6 @@ class RegisterLogin(BaseModel):
 def Register(request: Request, data: RegisterLogin):
     db = SessionLocal()
     try:
-        allowed_entry = db.query(Access).filter(Access.email == data.email).first()
-        if not allowed_entry:
-            raise HTTPException(status_code=403, detail="Email access denied.")
-
         existing_user = db.query(Users).filter(Users.email == data.email).first()
         if existing_user:
             raise HTTPException(status_code=400, detail="User already registered.")
@@ -2021,54 +2017,6 @@ def filter_transactions(
                 )
         return (transaction_data, row_counter, total)
 
-    finally:
-        db.close()
-
-
-class WhiteList(BaseModel):
-    email: str
-
-
-@app.post("/api/whitelist-email")
-def whitelist(data: WhiteList, authorization: str = Header(None)):
-    # Optional: Add your token verification here if needed
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid request.")
-
-    token = authorization.split(" ")[1]
-    user_id = verify_access_token(token=token)
-
-    if not user_id:
-        raise HTTPException(status_code=401, detail="User not found.")
-
-    if user_id != "6dc6905e-1485-4133-a977-85833dea270d":
-        raise HTTPException(
-            status_code=403,
-            detail="You do not have the authority to whitelist another user.",
-        )
-
-    db = SessionLocal()
-    try:
-        # 1. Query for the specific email instead of loading all rows
-        existing_user = db.query(Access).filter(Access.email == data.email).first()
-
-        if existing_user:
-            raise HTTPException(status_code=400, detail="Email already whitelisted.")
-
-        # 2. Instantiate the Access model object (not a raw dictionary)
-        new_entry = Access(email=data.email)
-
-        db.add(new_entry)
-        db.commit()
-        db.refresh(new_entry)
-
-        return {"message": "Email successfully whitelisted."}
-
-    except HTTPException as he:
-        raise he
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
     finally:
         db.close()
 

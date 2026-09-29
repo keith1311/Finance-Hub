@@ -1,8 +1,8 @@
 let currentIndex;
 let theme = "";
 let token = localStorage.getItem("authToken");
-// const apiURL = "https://finance-hub-qakq.onrender.com";
-const apiURL = "http://127.0.0.1:8000";
+const apiURL = "https://finance-hub-qakq.onrender.com";
+// const apiURL = "http://127.0.0.1:8000";
 // 1. Get from localStorage and convert to a number
 currentIndex = parseInt(localStorage.getItem("currentIndex"));
 theme = localStorage.getItem("theme");
@@ -1200,23 +1200,6 @@ openSettings.addEventListener("click", async (e) => {
 
     pfpElement.src = `${apiURL}/uploads/` + pfp;
 
-    if (token) {
-      const whiteList = document.getElementById("whitelist-box");
-      const close = document.getElementById("close");
-
-      // Paste your exact expected token here
-      const myToken =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZkYzY5MDVlLTE0ODUtNDEzMy1hOTc3LTg1ODMzZGVhMjcwZCJ9.DesGgnUptrCX4Q9VFs3Rg69JXxTh693Fc6ecOrz1MAk";
-
-      if (!token || token.trim() !== myToken) {
-        whiteList.classList.add("hidden"); // Hide it if it's not yours or missing
-        close.classList.add("adjust");
-      } else {
-        whiteList.classList.remove("hidden"); // Show it only if it's an exact match
-        close.classList.remove("adjust");
-      }
-    }
-
     // Set dropdown selections based on current active variables
     themesInput.value = theme; // "Light" or "Dark"
 
@@ -1614,49 +1597,5 @@ filterForm.addEventListener("submit", async function (event) {
     inputRowFilter.value = rowCounter; // Update the row input with the count of filtered rows
   } catch (error) {
     console.error("Error:", error);
-  }
-});
-
-// ============= Whitelist Function ============= //
-const whitelistBtn = document.getElementById("whitelist-btn");
-const whitelistEmail = document.getElementById("whitelist-email");
-
-whitelistBtn.addEventListener("click", async function () {
-  event.preventDefault();
-  // 1. Added async here
-  const email = whitelistEmail.value.trim();
-
-  if (!email) {
-    alert("Please enter an email address.");
-    return;
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    alert("Please enter a valid email address format.");
-    return;
-  }
-
-  try {
-    const response = await fetch(`${apiURL}/api/whitelist-email/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ email: email }), // 2. Added body so backend receives the email
-    });
-
-    if (!response.ok) {
-      const data = await response.json(); // Added parentheses ()
-      alert(`${data.detail}`); // Wrapped in backticks ``
-      return;
-    }
-
-    alert("Email Successfully Whitelisted!");
-    whitelistEmail.value = "";
-  } catch (error) {
-    console.error("Error:", error);
-    alert("Failed to whitelist email.");
   }
 });
