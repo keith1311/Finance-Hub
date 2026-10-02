@@ -378,7 +378,7 @@ dialog .wallet {
   flex-direction: column;
   gap: 4px;
   padding: 4px 0;
-  color: var(--text-subtle);
+  color: var(--text);
 }
 
 .table-row-item {
