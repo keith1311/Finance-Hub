@@ -19,7 +19,8 @@ jobs:
           for i in {1..2}; do
             echo "Attempt $i: Pinging server..."
             
-            if curl -s -S --max-time 30 -X GET "${{ secrets.SERVER_URL }}"; then
+            if curl -s -S --max-time 30 -X GET "${{ secrets.SERVER_URL }}" \
+              -H "Authorization: Bearer ${{ secrets.MY_API_KEY }}"; then
               echo "Server responded successfully!"
               exit 0
             fi
