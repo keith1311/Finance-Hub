@@ -10,6 +10,7 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   </head>
 
   <body>
@@ -492,6 +493,7 @@
             <button
               class="btn-save"
               type="submit"
+              id="apply-filter"
               style="height: 35px; align-items: center"
             >
               <i class="fa-solid fa-floppy-disk"></i>&nbsp;Apply
@@ -505,7 +507,7 @@
               <i class="fa-solid fa-print"></i>&nbsp;Report
             </button>
           </div>
-          <div class="table-card">
+          <div class="table-card" id="filter-table-card">
             <div class="table-headers">
               <div>Index</div>
               <div>Date</div>
@@ -517,6 +519,7 @@
             <div style="height: 1px; background: #222633; margin: 6px 0"></div>
             <div
               class="table-scroll"
+              id="filter-table-scroll"
               style="overflow-y: auto; max-height: 300px"
             >
               <div class="table-details" id="filter-details"></div>

@@ -1949,3 +1949,58 @@ transferAutomationForm.addEventListener("submit", async (event) => {
     console.error("Error submitting transaction:", error);
   }
 });
+
+// ===================== Report Function ====================== //
+document.getElementById("report-btn").addEventListener("click", function () {
+  const element = document.getElementById("filter-form");
+
+  const options = {
+    margin: 10,
+    filename: "transaction-history.pdf",
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      scrollY: 0,
+      onclone: (clonedDoc) => {
+        const style = clonedDoc.createElement("style");
+        style.textContent = `
+          #filter-table-card,
+          #filter-table-card * {
+            animation: none !important;
+            transition: none !important;
+          }
+          #filter-table-card {
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+            flex: none !important;
+          }
+          #filter-table-scroll {
+            max-height: none !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+            flex: none !important;
+          }
+          #filter-details {
+            color: #fff !important;
+            font-size: 12px !important;
+          }
+          .table-headers {
+            position: static !important;
+          }
+
+          #total-filter-amount {
+            color: #000000 !important;
+          }
+
+          #apply-filter, #report-btn, h3 , .input-group, .password-close{
+            display: none !important;}
+        `;
+        clonedDoc.head.appendChild(style);
+      },
+    },
+    jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+  };
+
+  html2pdf().from(element).set(options).save();
+});

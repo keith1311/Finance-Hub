@@ -1,0 +1,32 @@
+name: Server Keep-Alive Ping
+
+on:
+  schedule:
+    # Runs every day at 12:00 AM MYT (04:00 PM UTC)
+    - cron: "0 16 * * *"
+
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Automation Script
+        run: |
+          echo "Starting server wake-up sequence..."
+
+          # Try pinging up to 2 times, waiting up to 30 seconds per attempt
+          for i in {1..2}; do
+            echo "Attempt $i: Pinging server..."
+            
+            if curl -s -S --max-time 30 -X GET "${{ secrets.SERVER_URL }}"; then
+              echo "Server responded successfully!"
+              exit 0
+            fi
+            
+            echo "Server is likely still spinning up. Waiting 10 seconds before retry..."
+            sleep 10
+          done
+
+          echo "Error: Server failed to respond after multiple attempts."
+          exit 1
