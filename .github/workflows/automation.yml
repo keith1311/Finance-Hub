@@ -1,4 +1,4 @@
-name: Server Keep-Alive Ping
+name: Run Automation Script
 
 on:
   schedule:
